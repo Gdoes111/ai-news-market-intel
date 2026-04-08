@@ -3,20 +3,26 @@ import { useKV } from '@github/spark/hooks'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Newspaper, TrendUp, Lightning, Plus } from '@phosphor-icons/react'
+import { Newspaper, TrendUp, Lightning, Plus, Rss } from '@phosphor-icons/react'
 import { NewsItem } from '@/lib/types'
 import { NewsCard } from '@/components/NewsCard'
 import { AddNewsDialog } from '@/components/AddNewsDialog'
+import { RSSFeedDialog } from '@/components/RSSFeedDialog'
 import { EmptyState } from '@/components/EmptyState'
 import { Toaster } from '@/components/ui/sonner'
 
 function App() {
   const [news, setNews] = useKV<NewsItem[]>('news-items', [])
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [rssDialogOpen, setRssDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('priority')
 
   const handleAddNews = (newsItem: NewsItem) => {
     setNews((current) => [newsItem, ...(current || [])])
+  }
+
+  const handleBulkAddNews = (newsItems: NewsItem[]) => {
+    setNews((current) => [...newsItems, ...(current || [])])
   }
 
   const allNews = useMemo(() => {
@@ -51,14 +57,25 @@ function App() {
                 AI-Powered Market Analysis
               </p>
             </div>
-            <Button 
-              onClick={() => setDialogOpen(true)}
-              size="lg"
-              className="gap-2 shadow-lg shadow-accent/20"
-            >
-              <Plus size={20} weight="bold" />
-              <span className="hidden sm:inline">Add News</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                onClick={() => setRssDialogOpen(true)}
+                size="lg"
+                variant="outline"
+                className="gap-2"
+              >
+                <Rss size={20} weight="bold" />
+                <span className="hidden sm:inline">RSS Feeds</span>
+              </Button>
+              <Button 
+                onClick={() => setDialogOpen(true)}
+                size="lg"
+                className="gap-2 shadow-lg shadow-accent/20"
+              >
+                <Plus size={20} weight="bold" />
+                <span className="hidden sm:inline">Add News</span>
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -95,7 +112,7 @@ function App() {
                 <EmptyState
                   icon={<Lightning size={64} weight="duotone" />}
                   title="No Priority News"
-                  description="Priority news items (score 7+) will appear here. Add some news to get started."
+                  description="Priority news items (score 7+) will appear here. Click 'RSS Feeds' to fetch from trusted sources or 'Add News' manually."
                 />
               ) : (
                 <div className="space-y-4 pb-4">
@@ -113,7 +130,7 @@ function App() {
                 <EmptyState
                   icon={<TrendUp size={64} weight="duotone" />}
                   title="No Market News"
-                  description="Market-related news including stocks, economy, and geopolitics will appear here."
+                  description="Market-related news including stocks, economy, and geopolitics will appear here. Try fetching from RSS feeds."
                 />
               ) : (
                 <div className="space-y-4 pb-4">
@@ -131,7 +148,7 @@ function App() {
                 <EmptyState
                   icon={<Newspaper size={64} weight="duotone" />}
                   title="No News Yet"
-                  description="Click 'Add News' to start aggregating and analyzing news with AI."
+                  description="Click 'RSS Feeds' to automatically fetch from trusted sources, or 'Add News' to enter articles manually."
                 />
               ) : (
                 <div className="space-y-4 pb-4">
@@ -149,6 +166,13 @@ function App() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onAddNews={handleAddNews}
+      />
+
+      <RSSFeedDialog
+        open={rssDialogOpen}
+        onOpenChange={setRssDialogOpen}
+        onNewsAdded={handleBulkAddNews}
+        existingNews={news || []}
       />
 
       <Toaster position="top-right" />

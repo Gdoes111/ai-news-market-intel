@@ -12,6 +12,13 @@ An AI-powered news intelligence dashboard that aggregates, analyzes, and priorit
 
 ## Essential Features
 
+### RSS Feed Integration
+- **Functionality**: Automatically fetches news from multiple trusted RSS feeds (Reuters, Bloomberg, Financial Times, BBC, WSJ, AP, etc.) with configurable enable/disable toggles
+- **Purpose**: Eliminates manual news entry by automatically pulling from authoritative sources, ensuring continuous flow of relevant market and geopolitical news
+- **Trigger**: User clicks "RSS Feeds" button to open feed management dialog
+- **Progression**: User opens RSS dialog → Views 8+ pre-configured feeds → Toggles feeds on/off → Clicks "Fetch News" → System pulls latest articles → AI analyzes each → Deduplicates against existing news → Adds unique items to feed
+- **Success criteria**: Fetches 20-30 articles in under 10 seconds, deduplicates 100%, maintains feed preferences between sessions
+
 ### AI-Powered News Analysis
 - **Functionality**: Processes news content through AI model to extract key information, determine market relevance, and assess priority level
 - **Purpose**: Automatically categorizes and ranks news without manual sorting, identifying which items deserve immediate attention
@@ -51,10 +58,12 @@ An AI-powered news intelligence dashboard that aggregates, analyzes, and priorit
 
 - **Invalid URLs** - Show inline error with fallback to manual text entry option
 - **AI Processing Failures** - Save news item with default "Uncategorized" status and manual override option
-- **Duplicate News** - Detect similar titles/content and show "Already added" message
-- **Empty Sections** - Display helpful empty state with suggestion to add news sources
+- **Duplicate News** - Detect similar titles/content and show "Already added" message (RSS feeds auto-deduplicate)
+- **Empty Sections** - Display helpful empty state with suggestion to add news sources or fetch from RSS
 - **Slow AI Response** - Show processing spinner with timeout after 30 seconds
 - **Missing News Data** - Extract whatever fields available, mark missing fields as "Unknown"
+- **RSS Feed Failures** - Silently skip failed feeds and continue processing available ones
+- **No Enabled Feeds** - Disable "Fetch News" button and show warning when all feeds are toggled off
 
 ## Design Direction
 
@@ -133,14 +142,16 @@ Animations should feel responsive and data-driven, with subtle transitions that 
 
 - **Icon Selection**:
   - Plus (Add News action)
+  - Rss (RSS Feeds button)
   - Newspaper (All News tab)
   - TrendUp (Market News tab)
   - Lightning (Priority News tab)
-  - ArrowsClockwise (Refresh feed)
+  - ArrowsClockwise (Refresh/Fetch RSS feeds)
   - Link (URL input)
   - TextT (Text input)
   - Clock (Timestamp)
   - Tag (Category)
+  - CheckCircle (Enabled feed indicator)
 
 - **Spacing**:
   - Container padding: 6 (24px) on desktop, 4 (16px) on mobile
