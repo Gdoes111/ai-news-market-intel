@@ -16,7 +16,7 @@ interface NewsCardProps {
   onDelete?: (id: string) => void
 }
 
-export function NewsCard({ news, onDelete }: NewsCardProps) {
+export function NewsCard({ news }: NewsCardProps) {
   const priorityLevel = getPriorityLevel(news.priority)
   const shouldPulse = priorityLevel === 'critical' || priorityLevel === 'high'
 
