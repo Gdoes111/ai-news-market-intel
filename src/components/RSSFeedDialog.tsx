@@ -10,7 +10,7 @@ import { ArrowsClockwise, Rss, CheckCircle, Timer } from '@phosphor-icons/react'
 import { RSSFeed, DEFAULT_RSS_FEEDS, fetchAndConvertFeeds, deduplicateNews } from '@/lib/rssUtils'
 import { NewsItem } from '@/lib/types'
 import { toast } from 'sonner'
-import { useKV } from '@github/spark/hooks'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { AutoRefreshSettings } from '@/hooks/use-auto-refresh'
 
 interface RSSFeedDialogProps {
@@ -21,10 +21,10 @@ interface RSSFeedDialogProps {
 }
 
 export function RSSFeedDialog({ open, onOpenChange, onNewsAdded, existingNews }: RSSFeedDialogProps) {
-  const [feeds, setFeeds] = useKV<RSSFeed[]>('rss-feeds', DEFAULT_RSS_FEEDS)
+  const [feeds, setFeeds] = useLocalStorage<RSSFeed[]>('rss-feeds', DEFAULT_RSS_FEEDS)
   const [isLoading, setIsLoading] = useState(false)
-  const [lastFetchTime, setLastFetchTime] = useKV<number>('last-fetch-time', 0)
-  const [autoRefreshSettings, setAutoRefreshSettings] = useKV<AutoRefreshSettings>('auto-refresh-settings', {
+  const [lastFetchTime, setLastFetchTime] = useLocalStorage<number>('last-fetch-time', 0)
+  const [autoRefreshSettings, setAutoRefreshSettings] = useLocalStorage<AutoRefreshSettings>('auto-refresh-settings', {
     enabled: false,
     intervalMinutes: 20
   })

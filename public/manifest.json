@@ -1,0 +1,18 @@
+{
+  "name": "AI News Intelligence",
+  "short_name": "News Intel",
+  "description": "AI-powered market news intelligence dashboard",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B1426",
+  "theme_color": "#0B1426",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

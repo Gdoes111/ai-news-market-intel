@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
-import { useKV } from '@github/spark/hooks'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 
 export interface AutoRefreshSettings {
   enabled: boolean
@@ -15,11 +15,11 @@ export function useAutoRefresh(
   onRefresh: () => Promise<void>,
   settings?: AutoRefreshSettings
 ) {
-  const [autoRefreshSettings, setAutoRefreshSettings] = useKV<AutoRefreshSettings>(
+  const [autoRefreshSettings, setAutoRefreshSettings] = useLocalStorage<AutoRefreshSettings>(
     'auto-refresh-settings',
     DEFAULT_SETTINGS
   )
-  const [nextRefreshTime, setNextRefreshTime] = useKV<number>('next-refresh-time', 0)
+  const [nextRefreshTime, setNextRefreshTime] = useLocalStorage<number>('next-refresh-time', 0)
   const [, setTick] = useState(0)
   const intervalRef = useRef<number | null>(null)
   const currentSettings = settings || autoRefreshSettings || DEFAULT_SETTINGS

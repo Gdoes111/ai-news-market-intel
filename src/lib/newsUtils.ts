@@ -1,42 +1,18 @@
 import { NewsAnalysis, NewsCategory } from './types'
 
 export async function analyzeNewsContent(content: string): Promise<NewsAnalysis> {
-  const prompt = spark.llmPrompt`You are a financial news analyst. Analyze the following news content and extract structured information.
-
-News Content:
-${content}
-
-Analyze this content and return a JSON object with the following structure:
-{
-  "title": "Clear, concise headline (max 100 chars)",
-  "summary": "Brief 2-3 sentence summary focusing on key facts and implications",
-  "priority": <number 1-10, where 10 is most critical/urgent>,
-  "categories": [<array of relevant categories from: "breaking", "market", "geopolitical", "economy", "politics", "technology", "general">],
-  "isMarketRelated": <boolean - true if this news could impact financial markets, stocks, economy, or involves geopolitical/political events that affect markets>
-}
-
-Priority Scoring Guidelines:
-- 9-10: Major market-moving events, significant geopolitical crises, emergency economic announcements
-- 7-8: Important market news, notable political developments, significant corporate announcements
-- 5-6: Moderate market relevance, regional political news, routine economic data
-- 3-4: Minor updates, tangential market news, general interest
-- 1-2: Routine news with minimal market impact
-
-Return ONLY the JSON object, no additional text.`
-
   try {
-    const response = await spark.llm(prompt, 'gpt-4o', true)
-    const analysis = JSON.parse(response) as NewsAnalysis
-    
-    analysis.priority = Math.max(1, Math.min(10, analysis.priority || 5))
-    
-    return analysis
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content })
+    })
+    if (!response.ok) throw new Error('API error')
+    return await response.json()
   } catch (error) {
     console.error('AI analysis failed:', error)
-    
-    const fallbackTitle = content.substring(0, 100).trim()
     return {
-      title: fallbackTitle || 'Untitled News',
+      title: content.substring(0, 100).trim() || 'Untitled News',
       summary: content.substring(0, 300).trim() || 'No summary available',
       priority: 5,
       categories: ['general'],

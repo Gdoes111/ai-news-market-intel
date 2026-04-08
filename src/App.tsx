@@ -1,24 +1,26 @@
 import { useState, useMemo, useCallback } from 'react'
-import { useKV } from '@github/spark/hooks'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { Newspaper, TrendUp, Lightning, Plus, Rss, Timer } from '@phosphor-icons/react'
+import { Newspaper, TrendUp, Lightning, Plus, Rss, Timer, Brain } from '@phosphor-icons/react'
 import { NewsItem } from '@/lib/types'
 import { NewsCard } from '@/components/NewsCard'
 import { AddNewsDialog } from '@/components/AddNewsDialog'
 import { RSSFeedDialog } from '@/components/RSSFeedDialog'
+import { AnalystDialog } from '@/components/AnalystDialog'
 import { EmptyState } from '@/components/EmptyState'
 import { Toaster } from '@/components/ui/sonner'
 import { useAutoRefresh } from '@/hooks/use-auto-refresh'
 import { toast } from 'sonner'
 
 function App() {
-  const [news, setNews] = useKV<NewsItem[]>('news-items', [])
-  const [feeds] = useKV<any[]>('rss-feeds', [])
+  const [news, setNews] = useLocalStorage<NewsItem[]>('news-items', [])
+  const [feeds] = useLocalStorage<any[]>('rss-feeds', [])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [rssDialogOpen, setRssDialogOpen] = useState(false)
+  const [analystOpen, setAnalystOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('priority')
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false)
 
@@ -112,6 +114,15 @@ function App() {
                   </span>
                 </Badge>
               )}
+              <Button 
+                onClick={() => setAnalystOpen(true)}
+                size="lg"
+                variant="outline"
+                className="gap-2 border-accent/50 hover:border-accent hover:bg-accent/10"
+              >
+                <Brain size={20} weight="duotone" />
+                <span className="hidden sm:inline">Analyst</span>
+              </Button>
               <Button 
                 onClick={() => setRssDialogOpen(true)}
                 size="lg"
@@ -228,6 +239,8 @@ function App() {
         onNewsAdded={handleBulkAddNews}
         existingNews={news || []}
       />
+
+      <AnalystDialog open={analystOpen} onOpenChange={setAnalystOpen} newsItems={allNews} />
 
       <Toaster position="top-right" />
     </div>

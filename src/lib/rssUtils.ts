@@ -78,18 +78,14 @@ export interface RSSItem {
 
 async function parseRSSFeed(feedUrl: string, sourceName: string): Promise<RSSItem[]> {
   try {
-    const response = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`)
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch RSS feed')
-    }
-
+    const response = await fetch('/api/fetch-rss', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ feedUrl })
+    })
+    if (!response.ok) throw new Error('Failed to fetch RSS feed')
     const data = await response.json()
-
-    if (data.status !== 'ok') {
-      throw new Error(data.message || 'RSS parsing failed')
-    }
-
+    if (data.status !== 'ok') throw new Error(data.message || 'RSS parsing failed')
     return data.items.slice(0, 10).map((item: any) => ({
       title: item.title || 'Untitled',
       description: item.description || item.content || '',
@@ -132,11 +128,7 @@ export async function fetchMultipleFeeds(feeds: RSSFeed[]): Promise<RSSItem[]> {
 }
 
 export async function convertRSSItemToNews(rssItem: RSSItem): Promise<NewsItem> {
-  const stripHtml = (html: string): string => {
-    const div = document.createElement('div')
-    div.innerHTML = html
-    return div.textContent || div.innerText || ''
-  }
+  const stripHtml = (html: string): string => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
 
   const cleanDescription = stripHtml(rssItem.description)
   const content = `Title: ${rssItem.title}\n\nContent: ${cleanDescription}`
