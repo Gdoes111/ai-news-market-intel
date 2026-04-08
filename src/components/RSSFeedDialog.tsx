@@ -5,11 +5,13 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { ArrowsClockwise, Rss, CheckCircle } from '@phosphor-icons/react'
+import { Slider } from '@/components/ui/slider'
+import { ArrowsClockwise, Rss, CheckCircle, Timer } from '@phosphor-icons/react'
 import { RSSFeed, DEFAULT_RSS_FEEDS, fetchAndConvertFeeds, deduplicateNews } from '@/lib/rssUtils'
 import { NewsItem } from '@/lib/types'
 import { toast } from 'sonner'
 import { useKV } from '@github/spark/hooks'
+import { AutoRefreshSettings } from '@/hooks/use-auto-refresh'
 
 interface RSSFeedDialogProps {
   open: boolean
@@ -22,6 +24,10 @@ export function RSSFeedDialog({ open, onOpenChange, onNewsAdded, existingNews }:
   const [feeds, setFeeds] = useKV<RSSFeed[]>('rss-feeds', DEFAULT_RSS_FEEDS)
   const [isLoading, setIsLoading] = useState(false)
   const [lastFetchTime, setLastFetchTime] = useKV<number>('last-fetch-time', 0)
+  const [autoRefreshSettings, setAutoRefreshSettings] = useKV<AutoRefreshSettings>('auto-refresh-settings', {
+    enabled: false,
+    intervalMinutes: 20
+  })
 
   const toggleFeed = (feedId: string) => {
     setFeeds((current) => 
@@ -107,6 +113,61 @@ export function RSSFeedDialog({ open, onOpenChange, onNewsAdded, existingNews }:
         </DialogHeader>
 
         <div className="mt-4 space-y-4">
+          <div className="space-y-4 p-4 bg-muted/50 rounded-lg border border-border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Timer size={20} weight="bold" className="text-accent" />
+                <Label htmlFor="auto-refresh" className="text-sm font-semibold">
+                  Auto-Refresh
+                </Label>
+              </div>
+              <Switch
+                id="auto-refresh"
+                checked={autoRefreshSettings?.enabled || false}
+                onCheckedChange={(enabled) => {
+                  setAutoRefreshSettings((current) => ({
+                    ...(current || { enabled: false, intervalMinutes: 20 }),
+                    enabled
+                  }))
+                  if (enabled) {
+                    toast.success(`Auto-refresh enabled: Every ${autoRefreshSettings?.intervalMinutes || 20} minutes`)
+                  } else {
+                    toast.info('Auto-refresh disabled')
+                  }
+                }}
+                disabled={isLoading}
+              />
+            </div>
+            
+            {autoRefreshSettings?.enabled && (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-muted-foreground">
+                    Refresh Interval: {autoRefreshSettings.intervalMinutes} minutes
+                  </Label>
+                </div>
+                <Slider
+                  value={[autoRefreshSettings.intervalMinutes]}
+                  onValueChange={([value]) => {
+                    setAutoRefreshSettings((current) => ({
+                      ...(current || { enabled: false, intervalMinutes: 20 }),
+                      intervalMinutes: value
+                    }))
+                  }}
+                  min={15}
+                  max={30}
+                  step={5}
+                  disabled={isLoading}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground font-mono">
+                  <span>15 min</span>
+                  <span>30 min</span>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border border-border">
             <div className="space-y-1">
               <div className="text-sm font-semibold text-foreground">
