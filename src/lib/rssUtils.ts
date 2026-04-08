@@ -14,14 +14,14 @@ export const DEFAULT_RSS_FEEDS: RSSFeed[] = [
   {
     id: 'reuters-business',
     name: 'Reuters Business',
-    url: 'https://feeds.reuters.com/reuters/businessNews',
+    url: 'https://feeds.reuters.com/reuters/businessNews.rss',
     category: 'market',
     enabled: true
   },
   {
     id: 'reuters-markets',
     name: 'Reuters Markets',
-    url: 'https://feeds.reuters.com/news/wealth',
+    url: 'https://feeds.reuters.com/news/wealth.rss',
     category: 'market',
     enabled: true
   },
@@ -49,7 +49,7 @@ export const DEFAULT_RSS_FEEDS: RSSFeed[] = [
   {
     id: 'associated-press',
     name: 'Associated Press',
-    url: 'https://feeds.apnews.com/rss/apf-topnews',
+    url: 'https://apnews.com/rss',
     category: 'general',
     enabled: true
   },
