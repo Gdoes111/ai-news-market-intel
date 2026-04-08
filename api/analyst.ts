@@ -65,7 +65,7 @@ Be direct. Name companies and tickers. Flag uncertainty. This is for someone mak
 
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-5.1',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
