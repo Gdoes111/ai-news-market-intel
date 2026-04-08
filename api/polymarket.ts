@@ -125,7 +125,7 @@ Be specific with percentages. Name the exact markets. This is real money on the 
 
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4.5',
+      model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
