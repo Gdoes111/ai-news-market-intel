@@ -10,6 +10,7 @@ export interface RSSFeed {
 }
 
 export const DEFAULT_RSS_FEEDS: RSSFeed[] = [
+  // === TIER 1: Major Financial/Market ===
   {
     id: 'reuters-business',
     name: 'Reuters Business',
@@ -25,27 +26,6 @@ export const DEFAULT_RSS_FEEDS: RSSFeed[] = [
     enabled: true
   },
   {
-    id: 'bloomberg-markets',
-    name: 'Bloomberg Markets',
-    url: 'https://www.bloomberg.com/markets',
-    category: 'market',
-    enabled: true
-  },
-  {
-    id: 'financial-times',
-    name: 'Financial Times',
-    url: 'https://www.ft.com/rss/home',
-    category: 'market',
-    enabled: true
-  },
-  {
-    id: 'cnbc-world',
-    name: 'CNBC World',
-    url: 'https://www.cnbc.com/id/100727362/device/rss/rss.html',
-    category: 'geopolitical',
-    enabled: true
-  },
-  {
     id: 'bbc-business',
     name: 'BBC Business',
     url: 'https://feeds.bbci.co.uk/news/business/rss.xml',
@@ -54,8 +34,15 @@ export const DEFAULT_RSS_FEEDS: RSSFeed[] = [
   },
   {
     id: 'wsj-markets',
-    name: 'Wall Street Journal Markets',
+    name: 'Wall Street Journal',
     url: 'https://feeds.content.dowjones.io/public/rss/mw_realtimeheadlines',
+    category: 'market',
+    enabled: true
+  },
+  {
+    id: 'cnbc-world',
+    name: 'CNBC World',
+    url: 'https://www.cnbc.com/id/100727362/device/rss/rss.html',
     category: 'market',
     enabled: true
   },
@@ -65,6 +52,88 @@ export const DEFAULT_RSS_FEEDS: RSSFeed[] = [
     url: 'https://feeds.apnews.com/rss/apf-topnews',
     category: 'general',
     enabled: true
+  },
+  // === TIER 2: Fast/Political Intel ===
+  {
+    id: 'axios',
+    name: 'Axios',
+    url: 'https://api.axios.com/feed/',
+    category: 'general',
+    enabled: true
+  },
+  {
+    id: 'politico',
+    name: 'Politico',
+    url: 'https://www.politico.com/rss/politicopicks.xml',
+    category: 'geopolitical',
+    enabled: true
+  },
+  {
+    id: 'al-jazeera',
+    name: 'Al Jazeera',
+    url: 'https://www.aljazeera.com/xml/rss/all.xml',
+    category: 'geopolitical',
+    enabled: true
+  },
+  // === TIER 3: Investigative/Independent ===
+  {
+    id: 'the-intercept',
+    name: 'The Intercept',
+    url: 'https://theintercept.com/feed/?lang=en',
+    category: 'geopolitical',
+    enabled: true
+  },
+  {
+    id: 'propublica',
+    name: 'ProPublica',
+    url: 'https://feeds.propublica.org/propublica/main',
+    category: 'general',
+    enabled: true
+  },
+  {
+    id: 'zero-hedge',
+    name: 'Zero Hedge',
+    url: 'https://feeds.feedburner.com/zerohedge/feed',
+    category: 'market',
+    enabled: false
+  },
+  // === TIER 4: Entertainment/Pop Culture (TMZ etc for Polymarket) ===
+  {
+    id: 'tmz',
+    name: 'TMZ',
+    url: 'https://www.tmz.com/rss.xml',
+    category: 'general',
+    enabled: false
+  },
+  {
+    id: 'deadline',
+    name: 'Deadline Hollywood',
+    url: 'https://deadline.com/feed/',
+    category: 'general',
+    enabled: false
+  },
+  // === TIER 5: Crypto/Web3 ===
+  {
+    id: 'coindesk',
+    name: 'CoinDesk',
+    url: 'https://www.coindesk.com/arc/outboundfeeds/rss/',
+    category: 'market',
+    enabled: false
+  },
+  {
+    id: 'the-block',
+    name: 'The Block',
+    url: 'https://www.theblock.co/rss.xml',
+    category: 'market',
+    enabled: false
+  },
+  // === TIER 6: Asia Markets ===
+  {
+    id: 'nikkei-asia',
+    name: 'Nikkei Asia',
+    url: 'https://asia.nikkei.com/rss/feed/nar',
+    category: 'market',
+    enabled: false
   }
 ]
 

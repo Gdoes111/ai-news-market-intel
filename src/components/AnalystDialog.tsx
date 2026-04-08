@@ -30,6 +30,7 @@ export function AnalystDialog({ open, onOpenChange, newsItems }: AnalystDialogPr
   const [pastAnalyses, setPastAnalyses] = useLocalStorage<AnalystResult[]>('analyst-memory', [])
   const [isAnalysing, setIsAnalysing] = useState(false)
   const [currentView, setCurrentView] = useState<'latest' | 'history'>('latest')
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
 
   const latestAnalysis = pastAnalyses.length > 0 ? pastAnalyses[pastAnalyses.length - 1] : null
 
@@ -198,39 +199,65 @@ export function AnalystDialog({ open, onOpenChange, newsItems }: AnalystDialogPr
                 <p className="text-center text-muted-foreground py-8">No past analyses yet.</p>
               ) : (
                 [...pastAnalyses].reverse().map((analysis, i) => (
-                  <div key={i} className="p-4 bg-card rounded-lg border border-border hover:border-accent/50 transition-colors">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Clock size={14} className="text-muted-foreground" />
-                        <span className="text-sm font-mono text-muted-foreground">
-                          {new Date(analysis.timestamp).toLocaleString()}
-                        </span>
+                  <div key={i} className="bg-card rounded-lg border border-border hover:border-accent/50 transition-colors overflow-hidden">
+                    <div
+                      className="p-4 cursor-pointer"
+                      onClick={() => setExpandedIndex(expandedIndex === i ? null : i)}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Clock size={14} className="text-muted-foreground" />
+                          <span className="text-sm font-mono text-muted-foreground">
+                            {new Date(analysis.timestamp).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex gap-2 items-center">
+                          {analysis.sentiment && (
+                            <Badge variant="outline" className={`text-xs ${getSentimentColor(analysis.sentiment)}`}>
+                              {analysis.sentiment}
+                            </Badge>
+                          )}
+                          {analysis.riskLevel && (
+                            <Badge variant="outline" className={`text-xs ${getRiskColor(analysis.riskLevel)}`}>
+                              {analysis.riskLevel} risk
+                            </Badge>
+                          )}
+                          <span className="text-xs text-muted-foreground">{expandedIndex === i ? '▲' : '▼'}</span>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        {analysis.sentiment && (
-                          <Badge variant="outline" className={`text-xs ${getSentimentColor(analysis.sentiment)}`}>
-                            {analysis.sentiment}
-                          </Badge>
-                        )}
-                        {analysis.riskLevel && (
-                          <Badge variant="outline" className={`text-xs ${getRiskColor(analysis.riskLevel)}`}>
-                            {analysis.riskLevel} risk
-                          </Badge>
-                        )}
-                      </div>
+                      <div className="text-xs text-muted-foreground mb-2">{analysis.newsCount} articles · {analysis.stocks?.length || 0} stocks flagged</div>
+                      {analysis.keyFindings && (
+                        <ul className="space-y-0.5">
+                          {analysis.keyFindings.slice(0, 2).map((f, j) => (
+                            <li key={j} className="text-xs text-foreground/80 flex gap-1.5">
+                              <span className="text-accent">→</span>{f}
+                            </li>
+                          ))}
+                          {analysis.keyFindings.length > 2 && expandedIndex !== i && (
+                            <li className="text-xs text-muted-foreground">+{analysis.keyFindings.length - 2} more... (tap to expand)</li>
+                          )}
+                        </ul>
+                      )}
                     </div>
-                    <div className="text-xs text-muted-foreground mb-2">{analysis.newsCount} articles · {analysis.stocks?.length || 0} stocks flagged</div>
-                    {analysis.keyFindings && (
-                      <ul className="space-y-0.5">
-                        {analysis.keyFindings.slice(0, 2).map((f, j) => (
-                          <li key={j} className="text-xs text-foreground/80 flex gap-1.5">
-                            <span className="text-accent">→</span>{f}
-                          </li>
-                        ))}
-                        {analysis.keyFindings.length > 2 && (
-                          <li className="text-xs text-muted-foreground">+{analysis.keyFindings.length - 2} more...</li>
+                    {expandedIndex === i && (
+                      <div className="px-4 pb-4 border-t border-border pt-4">
+                        {analysis.stocks && analysis.stocks.length > 0 && (
+                          <div className="mb-3">
+                            <div className="text-xs font-semibold text-accent mb-1 uppercase tracking-wider">Stocks</div>
+                            <div className="flex flex-wrap gap-1">
+                              {analysis.stocks.map(ticker => (
+                                <Badge key={ticker} variant="outline" className="font-mono text-xs bg-accent/10 border-accent/40">
+                                  {ticker}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
                         )}
-                      </ul>
+                        <div
+                          className="prose prose-invert prose-sm max-w-none text-foreground [&_h2]:text-accent [&_h3]:text-foreground text-xs"
+                          dangerouslySetInnerHTML={{ __html: marked(analysis.report) as string }}
+                        />
+                      </div>
                     )}
                   </div>
                 ))

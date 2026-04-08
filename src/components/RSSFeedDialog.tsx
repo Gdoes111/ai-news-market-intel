@@ -154,14 +154,14 @@ export function RSSFeedDialog({ open, onOpenChange, onNewsAdded, existingNews }:
                       intervalMinutes: value
                     }))
                   }}
-                  min={15}
+                  min={5}
                   max={30}
                   step={5}
                   disabled={isLoading}
                   className="w-full"
                 />
                 <div className="flex justify-between text-xs text-muted-foreground font-mono">
-                  <span>15 min</span>
+                  <span>5 min</span>
                   <span>30 min</span>
                 </div>
               </div>

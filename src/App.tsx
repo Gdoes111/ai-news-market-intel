@@ -4,12 +4,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { Newspaper, TrendUp, Lightning, Plus, Rss, Timer, Brain } from '@phosphor-icons/react'
+import { Newspaper, TrendUp, Lightning, Plus, Rss, Timer, Brain, ChartLine } from '@phosphor-icons/react'
 import { NewsItem } from '@/lib/types'
 import { NewsCard } from '@/components/NewsCard'
 import { AddNewsDialog } from '@/components/AddNewsDialog'
 import { RSSFeedDialog } from '@/components/RSSFeedDialog'
 import { AnalystDialog } from '@/components/AnalystDialog'
+import { PolymarketDialog } from '@/components/PolymarketDialog'
 import { EmptyState } from '@/components/EmptyState'
 import { Toaster } from '@/components/ui/sonner'
 import { useAutoRefresh } from '@/hooks/use-auto-refresh'
@@ -21,6 +22,7 @@ function App() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [rssDialogOpen, setRssDialogOpen] = useState(false)
   const [analystOpen, setAnalystOpen] = useState(false)
+  const [polymarketOpen, setPolymarketOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('priority')
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false)
 
@@ -122,6 +124,15 @@ function App() {
               >
                 <Brain size={20} weight="duotone" />
                 <span className="hidden sm:inline">Analyst</span>
+              </Button>
+              <Button
+                onClick={() => setPolymarketOpen(true)}
+                size="lg"
+                variant="outline"
+                className="gap-2 border-green-500/50 hover:border-green-400 hover:bg-green-500/10 text-green-400"
+              >
+                <ChartLine size={20} weight="duotone" />
+                <span className="hidden sm:inline">Polymarket</span>
               </Button>
               <Button 
                 onClick={() => setRssDialogOpen(true)}
@@ -241,6 +252,8 @@ function App() {
       />
 
       <AnalystDialog open={analystOpen} onOpenChange={setAnalystOpen} newsItems={allNews} />
+
+      <PolymarketDialog open={polymarketOpen} onOpenChange={setPolymarketOpen} newsItems={allNews} />
 
       <Toaster position="top-right" />
     </div>
