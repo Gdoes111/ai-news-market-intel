@@ -184,9 +184,9 @@ export function AnalystDialog({ open, onOpenChange, newsItems }: AnalystDialogPr
                     </div>
                   )}
 
-                  <div className="border border-border rounded-lg p-4 bg-muted/20 w-full">
+                  <div className="border border-border rounded-lg p-4 bg-slate-900 w-full">
                     <div
-                      className="prose prose-invert prose-sm max-w-none w-full break-words text-foreground [&_h2]:text-accent [&_h2]:text-base [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-2 [&_h3]:text-foreground [&_h3]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1 [&_strong]:text-accent-foreground [&_ul]:space-y-1 [&_li]:ml-4 [&_p]:mb-2 [&_hr]:border-border"
+                      className="prose prose-invert prose-sm max-w-none w-full break-words [&_*]:text-slate-100 [&_h2]:text-cyan-400 [&_h2]:text-base [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-2 [&_h3]:text-slate-200 [&_h3]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1 [&_strong]:text-white [&_ul]:space-y-1 [&_li]:ml-4 [&_p]:mb-2 [&_p]:text-slate-100 [&_hr]:border-slate-700"
                       dangerouslySetInnerHTML={{ __html: marked(latestAnalysis.report) as string }}
                     />
                   </div>
