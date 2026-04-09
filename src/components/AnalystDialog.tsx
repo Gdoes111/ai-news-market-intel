@@ -184,10 +184,12 @@ export function AnalystDialog({ open, onOpenChange, newsItems }: AnalystDialogPr
                     </div>
                   )}
 
-                  <div
-                    className="prose prose-invert prose-sm max-w-none text-foreground [&_h2]:text-accent [&_h3]:text-foreground [&_strong]:text-accent-foreground [&_ul]:space-y-1"
-                    dangerouslySetInnerHTML={{ __html: marked(latestAnalysis.report) as string }}
-                  />
+                  <div className="overflow-y-auto max-h-[55vh] border border-border rounded-lg p-4 bg-muted/20">
+                    <div
+                      className="prose prose-invert prose-sm max-w-none text-foreground [&_h2]:text-accent [&_h3]:text-foreground [&_strong]:text-accent-foreground [&_ul]:space-y-1"
+                      dangerouslySetInnerHTML={{ __html: marked(latestAnalysis.report) as string }}
+                    />
+                  </div>
                 </div>
               )}
             </>
