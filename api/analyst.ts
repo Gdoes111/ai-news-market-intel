@@ -70,7 +70,7 @@ Be direct. Name companies and tickers. Flag uncertainty. This is for someone mak
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
-      max_tokens: 4000
+      max_completion_tokens: 4000
     })
 
     const report = completion.choices[0].message.content || 'Analysis failed'

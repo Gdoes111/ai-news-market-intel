@@ -130,7 +130,7 @@ Be specific with percentages. Name the exact markets. This is real money on the 
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
-      max_tokens: 4000
+      max_completion_tokens: 4000
     })
 
     const report = completion.choices[0].message.content || 'Analysis failed'
