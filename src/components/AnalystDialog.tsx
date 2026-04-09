@@ -183,7 +183,7 @@ export function AnalystDialog({ open, onOpenChange, newsItems }: AnalystDialogPr
                       <div className="text-xs font-semibold text-accent mb-2 uppercase tracking-wider">Stocks to Watch</div>
                       <div className="flex flex-wrap gap-2">
                         {latestAnalysis.stocks.map(ticker => (
-                          <Badge key={ticker} variant="outline" className="font-mono text-xs bg-accent/10 border-accent/40 text-accent-foreground">
+                          <Badge key={ticker} variant="outline" className="font-mono text-xs bg-accent/10 border-accent/40 text-cyan-300">
                             {ticker}
                           </Badge>
                         ))}
