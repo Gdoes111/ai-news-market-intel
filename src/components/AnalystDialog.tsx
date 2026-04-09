@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { Brain, ArrowsClockwise, Clock, TrendUp, Warning } from '@phosphor-icons/react'
+import { Brain, ArrowsClockwise, Clock, TrendUp, Warning, DownloadSimple } from '@phosphor-icons/react'
 import { NewsItem } from '@/lib/types'
 import { useLocalStorage } from '@/hooks/use-local-storage'
 import { toast } from 'sonner'
@@ -33,6 +33,18 @@ export function AnalystDialog({ open, onOpenChange, newsItems }: AnalystDialogPr
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
 
   const latestAnalysis = pastAnalyses.length > 0 ? pastAnalyses[pastAnalyses.length - 1] : null
+
+  const downloadReport = (analysis: AnalystResult) => {
+    const date = new Date(analysis.timestamp).toISOString().slice(0, 16).replace('T', '_').replace(':', '-')
+    const header = `# Market Intelligence Report\n_Generated: ${new Date(analysis.timestamp).toLocaleString()} · ${analysis.newsCount} articles · Sentiment: ${analysis.sentiment ?? 'unknown'} · Risk: ${analysis.riskLevel ?? 'unknown'}_\n\n---\n\n`
+    const blob = new Blob([header + analysis.report], { type: 'text/markdown' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `market-intel-${date}.md`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const runAnalysis = async () => {
     if (newsItems.length === 0) {
@@ -155,6 +167,15 @@ export function AnalystDialog({ open, onOpenChange, newsItems }: AnalystDialogPr
                         {latestAnalysis.riskLevel} risk
                       </Badge>
                     )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="ml-auto gap-1.5 text-xs h-7"
+                      onClick={() => downloadReport(latestAnalysis)}
+                    >
+                      <DownloadSimple size={13} weight="bold" />
+                      Download .md
+                    </Button>
                   </div>
 
                   {latestAnalysis.stocks && latestAnalysis.stocks.length > 0 && (
