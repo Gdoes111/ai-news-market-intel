@@ -131,7 +131,7 @@ async function searchGoogleNews(query: string): Promise<{ title: string; source:
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  const { newsItems, pastAnalyses } = req.body
+  const { newsItems, pastAnalyses, verifiedFacts, carryForwardStories } = req.body
 
   const top50 = newsItems.slice(0, 50)
 
@@ -305,6 +305,14 @@ Return JSON:
         .join('\n\n')
     : 'No previous analyses yet.'
 
+  const verifiedFactsContext = verifiedFacts && verifiedFacts.length > 0
+    ? `The following facts have been externally verified and confirmed in previous reports. DO NOT re-hedge or mark as uncertain — treat these as established ground truth:\n${verifiedFacts.slice(-50).map((f: string, i: number) => `${i + 1}. ${f}`).join('\n')}`
+    : 'No accumulated verified facts yet.'
+
+  const carryForwardContext = carryForwardStories && carryForwardStories.length > 0
+    ? `The following important stories were verified in recent reports. Even if not prominent in today's digest, include any that are still relevant:\n${carryForwardStories.map((s: any) => `- [${s.confidence}] ${s.title}: ${s.summary}`).join('\n')}`
+    : 'No carry-forward stories from prior reports.'
+
   const systemPrompt = `You are an elite market intelligence analyst with the instincts of an investigative journalist and the precision of a hedge fund analyst. Your job is to follow the evidence wherever it leads — not to have a predetermined view, not to be contrarian for its own sake, and not to just summarise what everyone already knows.
 
 Read the data carefully. If something correlates, say so. If something looks suspicious or inconsistent, flag it. If the evidence clearly points in a direction most people aren't looking, say that too. But only when the evidence actually supports it — not as a default posture. Let the facts drive the analysis, not the other way around.`
@@ -319,6 +327,12 @@ ${externalVerification || 'External search unavailable — use digest sources on
 
 ## CURRENT NEWS DIGEST (${newsItems.length} articles from multiple sources)
 ${newsDigest}
+
+## VERIFIED FACTS ACCUMULATOR (confirmed across previous reports — never re-hedge these)
+${verifiedFactsContext}
+
+## CARRY-FORWARD STORIES (important verified stories from recent reports — include if still relevant)
+${carryForwardContext}
 
 ## PAST ANALYSIS MEMORY
 ${memoryContext}
@@ -414,7 +428,9 @@ Return this exact JSON structure with real values from the report (not placehold
   "sentiment": /* one of: "bullish", "bearish", "neutral", "mixed" */,
   "riskLevel": /* one of: "low", "medium", "high" */,
   "verifiedStories": /* integer count of stories marked HIGH CONFIDENCE */,
-  "unverifiedStories": /* integer count of stories marked UNVERIFIED */
+  "unverifiedStories": /* integer count of stories marked UNVERIFIED */,
+  "topStories": [/* top 5-8 stories from the report as { "title": "short title", "confidence": "high/medium/low", "summary": "1 sentence summary" } */],
+  "newVerifiedFacts": [/* 3-8 specific facts newly confirmed in this report that should persist e.g. "Mojtaba Khamenei confirmed as new Supreme Leader by Assembly of Experts on March 8 2026", "Saudi East-West pipeline attack cut ~700K bpd, confirmed Bloomberg/CNBC/Al-Monitor" — be specific with names, numbers, dates */]
 }`
         }
       ],
@@ -427,7 +443,9 @@ Return this exact JSON structure with real values from the report (not placehold
       report,
       timestamp: Date.now(),
       newsCount: newsItems.length,
-      ...structured
+      ...structured,
+      topStories: structured.topStories || [],
+      newVerifiedFacts: structured.newVerifiedFacts || []
     })
   } catch (error) {
     console.error('Analyst error:', error)

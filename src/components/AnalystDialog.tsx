@@ -18,6 +18,8 @@ interface AnalystResult {
   sectors?: string[]
   sentiment?: string
   riskLevel?: string
+  topStories?: { title: string; confidence: string; summary: string }[]
+  newVerifiedFacts?: string[]
 }
 
 interface AnalystDialogProps {
@@ -28,6 +30,7 @@ interface AnalystDialogProps {
 
 export function AnalystDialog({ open, onOpenChange, newsItems }: AnalystDialogProps) {
   const [pastAnalyses, setPastAnalyses] = useLocalStorage<AnalystResult[]>('analyst-memory', [])
+  const [verifiedFacts, setVerifiedFacts] = useLocalStorage<string[]>('analyst-verified-facts', [])
   const [isAnalysing, setIsAnalysing] = useState(false)
   const [currentView, setCurrentView] = useState<'latest' | 'history'>('latest')
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
@@ -61,7 +64,9 @@ export function AnalystDialog({ open, onOpenChange, newsItems }: AnalystDialogPr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           newsItems,
-          pastAnalyses: pastAnalyses.slice(-5)
+          pastAnalyses: pastAnalyses.slice(-5),
+          verifiedFacts: verifiedFacts.slice(-50),
+          carryForwardStories: pastAnalyses.slice(-3).flatMap(a => a.topStories || []).slice(0, 15)
         })
       })
 
@@ -69,6 +74,14 @@ export function AnalystDialog({ open, onOpenChange, newsItems }: AnalystDialogPr
 
       const result: AnalystResult = await response.json()
       setPastAnalyses(prev => [...prev, result])
+      // Accumulate verified facts — keep last 100, deduplicate
+      if (result.newVerifiedFacts && result.newVerifiedFacts.length > 0) {
+        setVerifiedFacts(prev => {
+          const combined = [...prev, ...result.newVerifiedFacts!]
+          const deduped = [...new Set(combined)]
+          return deduped.slice(-100)
+        })
+      }
       setCurrentView('latest')
       toast.success('Analysis complete!', { id: toastId })
     } catch (error) {
