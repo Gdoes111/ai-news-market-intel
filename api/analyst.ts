@@ -6,74 +6,81 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 // Extend Vercel function timeout to 300s (requires Pro plan; on hobby it caps at 60s)
 export const maxDuration = 300
 
-// Fetch live market snapshot from Yahoo Finance with cookie/crumb auth
-async function fetchMarketSnapshot(): Promise<string> {
-  const symbols = ['SPY', 'QQQ', 'DIA', 'CL=F', 'BZ=F', '^TNX', 'GC=F', '^VIX', 'DX-Y.NYB']
-  const labels: Record<string, string> = {
-    'SPY': 'S&P 500 ETF', 'QQQ': 'Nasdaq 100 ETF', 'DIA': 'Dow Jones ETF',
-    'CL=F': 'WTI Crude Oil', 'BZ=F': 'Brent Crude', '^TNX': '10Y Treasury Yield',
-    'GC=F': 'Gold', '^VIX': 'VIX (Fear Index)', 'DX-Y.NYB': 'US Dollar Index'
+// Fetch a single price from stooq.com CSV (no auth needed)
+async function fetchStooq(symbol: string, label: string): Promise<string | null> {
+  try {
+    const url = `https://stooq.com/q/l/?s=${encodeURIComponent(symbol)}&f=sd2t2ohlcv&h&e=csv`
+    const resp = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } })
+    if (!resp.ok) return null
+    const text = await resp.text()
+    const lines = text.trim().split('\n')
+    if (lines.length < 2) return null
+    const cols = lines[1].split(',')
+    const close = parseFloat(cols[6]) // close price
+    if (isNaN(close)) return null
+    const open = parseFloat(cols[3])
+    const chg = isNaN(open) || open === 0 ? 0 : ((close - open) / open) * 100
+    const arrow = chg >= 0 ? '▲' : '▼'
+    return `${label}: $${close.toFixed(2)} (${arrow}${Math.abs(chg).toFixed(2)}%)`
+  } catch {
+    return null
   }
-  const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36'
+}
 
-  // Try method 1: cookie + crumb handshake
+// Fetch live market snapshot — stooq primary, Yahoo fallback
+async function fetchMarketSnapshot(): Promise<string> {
+  // stooq symbols: ETFs use name.us, futures use symbol.f, indices use ^symbol
+  const stooqSymbols: [string, string][] = [
+    ['spy.us',   'S&P 500 (SPY)'],
+    ['qqq.us',   'Nasdaq 100 (QQQ)'],
+    ['dia.us',   'Dow Jones (DIA)'],
+    ['cl.f',     'WTI Crude Oil'],
+    ['lco.f',    'Brent Crude'],
+    ['tnx.cboe', '10Y Treasury Yield'],
+    ['gc.f',     'Gold'],
+    ['^vix',     'VIX (Fear Index)'],
+    ['dxy.icap', 'US Dollar Index'],
+  ]
+
+  const results = await Promise.all(
+    stooqSymbols.map(([sym, label]) => fetchStooq(sym, label))
+  )
+
+  const lines = results.filter(Boolean) as string[]
+
+  if (lines.length >= 4) return lines.join('\n')
+
+  // Fallback: Yahoo Finance v8 chart endpoint (no crumb needed for chart)
   try {
-    const cookieResp = await fetch('https://finance.yahoo.com/', { headers: { 'User-Agent': ua } })
-    const rawCookies = cookieResp.headers.getSetCookie?.() || []
-    const cookieStr = rawCookies.map((c: string) => c.split(';')[0]).join('; ')
-
-    const crumbResp = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
-      headers: { 'User-Agent': ua, 'Cookie': cookieStr }
-    })
-    const crumb = await crumbResp.text()
-    if (!crumb || crumb.includes('<')) throw new Error('Bad crumb')
-
-    const url = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${symbols.join(',')}&crumb=${encodeURIComponent(crumb)}`
-    const resp = await fetch(url, { headers: { 'User-Agent': ua, 'Cookie': cookieStr } })
-    if (!resp.ok) throw new Error(`Yahoo v7+crumb: ${resp.status}`)
-    const data = await resp.json()
-    const quotes = data?.quoteResponse?.result || []
-    if (quotes.length === 0) throw new Error('Empty quotes')
-    return quotes.map((q: any) => {
-      const chg = parseFloat(q.regularMarketChangePercent?.toFixed(2))
-      const arrow = chg > 0 ? '▲' : '▼'
-      return `${labels[q.symbol] || q.symbol}: $${q.regularMarketPrice?.toFixed(2)} (${arrow}${Math.abs(chg)}%)`
-    }).join('\n')
-  } catch {}
-
-  // Try method 2: query1 v8 endpoint (sometimes bypasses auth)
-  try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/quote?symbols=${symbols.join(',')}`
-    const resp = await fetch(url, { headers: { 'User-Agent': ua, 'Accept': 'application/json' } })
-    if (!resp.ok) throw new Error(`Yahoo v8: ${resp.status}`)
-    const data = await resp.json()
-    const quotes = data?.quoteResponse?.result || []
-    if (quotes.length === 0) throw new Error('Empty quotes')
-    return quotes.map((q: any) => {
-      const chg = parseFloat(q.regularMarketChangePercent?.toFixed(2))
-      const arrow = chg > 0 ? '▲' : '▼'
-      return `${labels[q.symbol] || q.symbol}: $${q.regularMarketPrice?.toFixed(2)} (${arrow}${Math.abs(chg)}%)`
-    }).join('\n')
-  } catch {}
-
-  // Try method 3: Fallback to individual Google Finance scrape via search RSS
-  try {
-    const fallbackSymbols = [['SPY', 'S&P 500'], ['CL=F', 'WTI Crude'], ['^VIX', 'VIX']]
-    const lines: string[] = []
-    for (const [sym, label] of fallbackSymbols) {
-      const hits = await fetch(`https://news.google.com/rss/search?q=${encodeURIComponent(sym + ' stock price today')}&hl=en-US&gl=US&ceid=US:en`, {
-        headers: { 'User-Agent': ua }
-      })
-      if (hits.ok) {
-        const xml = await hits.text()
-        const titleMatch = xml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)
-        if (titleMatch) lines.push(`${label}: see news — "${titleMatch[1].substring(0, 80)}"`)
-      }
+    const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36'
+    const ySymbols = ['SPY', 'QQQ', 'CL=F', 'BZ=F', 'GC=F', '^VIX']
+    const yLabels: Record<string, string> = {
+      'SPY': 'S&P 500 (SPY)', 'QQQ': 'Nasdaq 100 (QQQ)',
+      'CL=F': 'WTI Crude Oil', 'BZ=F': 'Brent Crude',
+      'GC=F': 'Gold', '^VIX': 'VIX'
     }
-    if (lines.length > 0) return `[Yahoo Finance unavailable — partial data from news]\n${lines.join('\n')}`
+    const yLines: string[] = []
+    await Promise.all(ySymbols.map(async sym => {
+      try {
+        const r = await fetch(`https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=2d`, {
+          headers: { 'User-Agent': ua, 'Accept': 'application/json' }
+        })
+        if (!r.ok) return
+        const d = await r.json()
+        const meta = d?.chart?.result?.[0]?.meta
+        if (!meta) return
+        const price = meta.regularMarketPrice
+        const prev = meta.chartPreviousClose || meta.previousClose
+        const chg = prev ? ((price - prev) / prev) * 100 : 0
+        const arrow = chg >= 0 ? '▲' : '▼'
+        yLines.push(`${yLabels[sym]}: $${price?.toFixed(2)} (${arrow}${Math.abs(chg).toFixed(2)}%)`)
+      } catch {}
+    }))
+    if (yLines.length >= 3) return (lines.length > 0 ? lines.join('\n') + '\n' : '') + yLines.join('\n')
   } catch {}
 
-  return 'Live market data unavailable — all sources failed. Rely on prices mentioned in news articles.'
+  if (lines.length > 0) return lines.join('\n') + '\n(some symbols unavailable)'
+  return 'Live market data unavailable — rely on prices cited in news articles.'
 }
 
 // Search Google News RSS for a topic — returns real headlines + sources
