@@ -29,7 +29,7 @@ async function fetchStooq(symbol: string, label: string): Promise<string | null>
 
 // Fetch live market snapshot — stooq primary, Yahoo fallback
 async function fetchMarketSnapshot(): Promise<string> {
-  // stooq symbols: ETFs use name.us, futures use symbol.f, indices use ^symbol
+  // VIX is not available on stooq (returns N/D) — fetched separately via Yahoo
   const stooqSymbols: [string, string][] = [
     ['spy.us',   'S&P 500 (SPY)'],
     ['qqq.us',   'Nasdaq 100 (QQQ)'],
@@ -38,15 +38,29 @@ async function fetchMarketSnapshot(): Promise<string> {
     ['lco.f',    'Brent Crude'],
     ['tnx.cboe', '10Y Treasury Yield'],
     ['gc.f',     'Gold'],
-    ['^vix',     'VIX (Fear Index)'],
     ['dxy.icap', 'US Dollar Index'],
   ]
 
-  const results = await Promise.all(
-    stooqSymbols.map(([sym, label]) => fetchStooq(sym, label))
-  )
+  const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36'
 
-  const lines = results.filter(Boolean) as string[]
+  const [stooqResults, vixResult] = await Promise.all([
+    Promise.all(stooqSymbols.map(([sym, label]) => fetchStooq(sym, label))),
+    fetch('https://query2.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=2d', {
+      headers: { 'User-Agent': ua, 'Accept': 'application/json' }
+    }).then(async r => {
+      if (!r.ok) return null
+      const d = await r.json()
+      const meta = d?.chart?.result?.[0]?.meta
+      if (!meta) return null
+      const price = meta.regularMarketPrice
+      const prev = meta.chartPreviousClose || meta.previousClose
+      const chg = prev ? ((price - prev) / prev) * 100 : 0
+      const arrow = chg >= 0 ? '▲' : '▼'
+      return `VIX (Fear Index): ${price?.toFixed(2)} (${arrow}${Math.abs(chg).toFixed(2)}%)`
+    }).catch(() => null)
+  ])
+
+  const lines = [...stooqResults.filter(Boolean), vixResult].filter(Boolean) as string[]
 
   if (lines.length >= 4) return lines.join('\n')
 

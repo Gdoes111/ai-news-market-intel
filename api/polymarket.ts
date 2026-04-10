@@ -90,11 +90,26 @@ async function fetchMarketSnapshot(): Promise<string> {
     ['cl.f',     'WTI Crude Oil'],
     ['lco.f',    'Brent Crude'],
     ['gc.f',     'Gold'],
-    ['^vix',     'VIX (Fear Index)'],
     ['btcusd',   'Bitcoin (BTC/USD)'],
   ]
-  const results = await Promise.all(stooqSymbols.map(([sym, label]) => fetchStooq(sym, label)))
-  const lines = results.filter(Boolean) as string[]
+  const ua = 'Mozilla/5.0'
+  const [stooqResults, vixResult] = await Promise.all([
+    Promise.all(stooqSymbols.map(([sym, label]) => fetchStooq(sym, label))),
+    fetch('https://query2.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=2d', {
+      headers: { 'User-Agent': ua, 'Accept': 'application/json' }
+    }).then(async r => {
+      if (!r.ok) return null
+      const d = await r.json()
+      const meta = d?.chart?.result?.[0]?.meta
+      if (!meta) return null
+      const price = meta.regularMarketPrice
+      const prev = meta.chartPreviousClose || meta.previousClose
+      const chg = prev ? ((price - prev) / prev) * 100 : 0
+      const arrow = chg >= 0 ? '▲' : '▼'
+      return `VIX (Fear Index): ${price?.toFixed(2)} (${arrow}${Math.abs(chg).toFixed(2)}%)`
+    }).catch(() => null)
+  ])
+  const lines = [...stooqResults.filter(Boolean), vixResult].filter(Boolean) as string[]
 
   if (lines.length >= 3) return lines.join('\n')
 

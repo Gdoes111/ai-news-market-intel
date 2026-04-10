@@ -135,7 +135,43 @@ export const DEFAULT_RSS_FEEDS: RSSFeed[] = [
     category: 'market',
     enabled: true
   },
-  // === TIER 7: Reddit Sentiment ===
+  // === TIER 7: Energy & Middle East ===
+  {
+    id: 'oilprice',
+    name: 'OilPrice.com',
+    url: 'https://oilprice.com/rss/main',
+    category: 'market',
+    enabled: true
+  },
+  {
+    id: 'energy-monitor',
+    name: 'Energy Monitor',
+    url: 'https://www.energymonitor.ai/feed/',
+    category: 'market',
+    enabled: true
+  },
+  {
+    id: 'middle-east-eye',
+    name: 'Middle East Eye',
+    url: 'https://www.middleeasteye.net/rss',
+    category: 'geopolitical',
+    enabled: true
+  },
+  {
+    id: 'arab-news',
+    name: 'Arab News',
+    url: 'https://www.arabnews.com/rss.xml',
+    category: 'geopolitical',
+    enabled: true
+  },
+  {
+    id: 'upstream-online',
+    name: 'Upstream Online',
+    url: 'https://www.upstreamonline.com/rss',
+    category: 'market',
+    enabled: true
+  },
+  // === TIER 8: Reddit Sentiment ===
   {
     id: 'reddit-wallstreetbets',
     name: 'Reddit WallStreetBets',
