@@ -171,7 +171,50 @@ export const DEFAULT_RSS_FEEDS: RSSFeed[] = [
     category: 'market',
     enabled: true
   },
-  // === TIER 8: Europe ===
+  // === TIER 8: Australia (priority — G is based here) ===
+  {
+    id: 'abc-australia',
+    name: 'ABC News Australia',
+    url: 'https://www.abc.net.au/news/feed/51120/rss.xml',
+    category: 'general',
+    enabled: true
+  },
+  {
+    id: 'smh',
+    name: 'Sydney Morning Herald',
+    url: 'https://www.smh.com.au/rss/feed.xml',
+    category: 'general',
+    enabled: true
+  },
+  {
+    id: 'afr',
+    name: 'Australian Financial Review',
+    url: 'https://www.afr.com/rss',
+    category: 'market',
+    enabled: true
+  },
+  {
+    id: 'the-australian',
+    name: 'The Australian',
+    url: 'https://www.theaustralian.com.au/feed',
+    category: 'general',
+    enabled: true
+  },
+  {
+    id: 'guardian-australia',
+    name: 'Guardian Australia',
+    url: 'https://www.theguardian.com/australia-news/rss',
+    category: 'general',
+    enabled: true
+  },
+  {
+    id: 'abc-australia-business',
+    name: 'ABC News Australia — Business',
+    url: 'https://www.abc.net.au/news/feed/2942460/rss.xml',
+    category: 'market',
+    enabled: true
+  },
+  // === TIER 9: Europe ===
   {
     id: 'euronews',
     name: 'Euronews',
@@ -193,7 +236,28 @@ export const DEFAULT_RSS_FEEDS: RSSFeed[] = [
     category: 'geopolitical',
     enabled: true
   },
-  // === TIER 9: Asia-Pacific ===
+  {
+    id: 'guardian-world',
+    name: 'Guardian World',
+    url: 'https://www.theguardian.com/world/rss',
+    category: 'geopolitical',
+    enabled: true
+  },
+  {
+    id: 'france24',
+    name: 'France 24',
+    url: 'https://www.france24.com/en/rss',
+    category: 'geopolitical',
+    enabled: true
+  },
+  {
+    id: 'the-local-europe',
+    name: 'The Local (Europe)',
+    url: 'https://www.thelocal.com/feed/',
+    category: 'geopolitical',
+    enabled: true
+  },
+  // === TIER 10: Asia-Pacific ===
   {
     id: 'scmp',
     name: 'South China Morning Post',
@@ -216,13 +280,34 @@ export const DEFAULT_RSS_FEEDS: RSSFeed[] = [
     enabled: true
   },
   {
-    id: 'abc-australia',
-    name: 'ABC News Australia',
-    url: 'https://www.abc.net.au/news/feed/51120/rss.xml',
-    category: 'general',
+    id: 'japan-times',
+    name: 'Japan Times',
+    url: 'https://www.japantimes.co.jp/feed/',
+    category: 'geopolitical',
     enabled: true
   },
-  // === TIER 10: Americas (Latin America) ===
+  {
+    id: 'korea-herald',
+    name: 'Korea Herald',
+    url: 'https://www.koreaherald.com/common/rss_xml.php?ct=020100000000',
+    category: 'geopolitical',
+    enabled: true
+  },
+  {
+    id: 'channel-news-asia',
+    name: 'Channel NewsAsia',
+    url: 'https://www.channelnewsasia.com/rssfeeds/8395884',
+    category: 'geopolitical',
+    enabled: true
+  },
+  {
+    id: 'taipei-times',
+    name: 'Taipei Times',
+    url: 'https://www.taipeitimes.com/xml/index.rss',
+    category: 'geopolitical',
+    enabled: true
+  },
+  // === TIER 11: Americas (Latin America) ===
   {
     id: 'mercopress',
     name: 'MercoPress (Latin America)',
@@ -237,7 +322,14 @@ export const DEFAULT_RSS_FEEDS: RSSFeed[] = [
     category: 'geopolitical',
     enabled: true
   },
-  // === TIER 11: Africa ===
+  {
+    id: 'latin-finance',
+    name: 'Latin Finance',
+    url: 'https://latinfinance.com/feed/',
+    category: 'market',
+    enabled: true
+  },
+  // === TIER 12: Africa ===
   {
     id: 'african-business',
     name: 'African Business Magazine',
@@ -252,7 +344,14 @@ export const DEFAULT_RSS_FEEDS: RSSFeed[] = [
     category: 'geopolitical',
     enabled: true
   },
-  // === TIER 12: Russia / Eastern Europe / Central Asia ===
+  {
+    id: 'africa-report',
+    name: 'The Africa Report',
+    url: 'https://www.theafricareport.com/feed/',
+    category: 'geopolitical',
+    enabled: true
+  },
+  // === TIER 13: Russia / Eastern Europe / Central Asia ===
   {
     id: 'kyiv-independent',
     name: 'Kyiv Independent',
@@ -267,7 +366,14 @@ export const DEFAULT_RSS_FEEDS: RSSFeed[] = [
     category: 'geopolitical',
     enabled: true
   },
-  // === TIER 13: South Asia ===
+  {
+    id: 'moscow-times',
+    name: 'Moscow Times (Independent)',
+    url: 'https://www.themoscowtimes.com/rss/news',
+    category: 'geopolitical',
+    enabled: true
+  },
+  // === TIER 14: South Asia ===
   {
     id: 'dawn-pakistan',
     name: 'Dawn (Pakistan)',
@@ -282,7 +388,14 @@ export const DEFAULT_RSS_FEEDS: RSSFeed[] = [
     category: 'market',
     enabled: true
   },
-  // === TIER 14: Reddit Sentiment ===
+  {
+    id: 'daily-star-bangladesh',
+    name: 'Daily Star Bangladesh',
+    url: 'https://www.thedailystar.net/frontpage/rss.xml',
+    category: 'geopolitical',
+    enabled: true
+  },
+  // === TIER 15: Reddit Sentiment ===
   {
     id: 'reddit-wallstreetbets',
     name: 'Reddit WallStreetBets',
