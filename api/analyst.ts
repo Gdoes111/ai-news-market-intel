@@ -184,23 +184,59 @@ Return JSON:
     magnitudeStories = parsed.magnitudeStories || []
   } catch {}
 
-  // --- Step 3: Research the top 8 clusters + all magnitude-gate stories via Google News ---
+  // --- Step 3: Gap analysis — what's missing from the digest given the macro context? ---
+  const gapCompletion = await openai.chat.completions.create({
+    model: 'gpt-5.4-mini',
+    messages: [
+      { role: 'system', content: 'You are a senior news editor. Return ONLY valid JSON.' },
+      {
+        role: 'user',
+        content: `You are looking at a digest of ${top50.length} news articles. Here are the topics currently covered:
+
+${clusters.slice(0, 15).map(c => `- ${c.topic}`).join('\n')}
+
+Given these topics, what major related stories or angles are MISSING that a well-informed analyst would expect to find? Think about: what follow-on events would naturally be happening? What neighbouring countries/markets/sectors would be affected that aren't mentioned? What policy responses would logically follow?
+
+Only flag genuinely important gaps — stories that if confirmed would materially change the market picture. Max 4 gaps.
+
+Return JSON:
+{
+  "gaps": [
+    { "topic": "Short label", "searchQuery": "3-5 word Google News search", "reason": "Why this matters" }
+  ]
+}`
+      }
+    ],
+    response_format: { type: 'json_object' }
+  })
+
+  let gaps: { topic: string; searchQuery: string; reason: string }[] = []
+  try {
+    const parsed = JSON.parse(gapCompletion.choices[0].message.content || '{}')
+    gaps = parsed.gaps || []
+  } catch {}
+
+  // --- Step 4: Research the top 8 clusters + magnitude-gate stories + gap searches via Google News ---
   const topClusters = [...clusters]
     .sort((a, b) => (b.significance || 0) - (a.significance || 0))
     .slice(0, 8)
 
-  // Merge cluster searches + magnitude searches (deduplicate by topic)
-  const allSearches: { topic: string; searchQuery: string; isMagnitude: boolean }[] = [
-    ...topClusters.map(c => ({ topic: c.topic, searchQuery: c.searchQuery || c.topic, isMagnitude: false })),
+  // Merge cluster searches + magnitude searches + gap searches (deduplicate by topic)
+  const coveredTopics = topClusters.map(c => c.topic.toLowerCase())
+  const allSearches: { topic: string; searchQuery: string; tag: 'cluster' | 'magnitude' | 'gap' }[] = [
+    ...topClusters.map(c => ({ topic: c.topic, searchQuery: c.searchQuery || c.topic, tag: 'cluster' as const })),
     ...magnitudeStories
-      .filter(m => !topClusters.some(c => c.topic.toLowerCase().includes(m.topic.toLowerCase())))
-      .map(m => ({ topic: m.topic, searchQuery: m.searchQuery, isMagnitude: true }))
+      .filter(m => !coveredTopics.some(t => t.includes(m.topic.toLowerCase())))
+      .map(m => ({ topic: m.topic, searchQuery: m.searchQuery, tag: 'magnitude' as const })),
+    ...gaps
+      .filter(g => !coveredTopics.some(t => t.includes(g.topic.toLowerCase())))
+      .map(g => ({ topic: g.topic, searchQuery: g.searchQuery, tag: 'gap' as const }))
   ]
 
   const researchResults = await Promise.all(
     allSearches.map(async (s) => {
       const hits = await searchGoogleNews(s.searchQuery)
-      return { topic: s.topic, hits, isMagnitude: s.isMagnitude }
+      return { topic: s.topic, hits, tag: s.tag }
     })
   )
 
@@ -210,7 +246,7 @@ Return JSON:
     .map(r => {
       const sourceList = [...new Set(r.hits.map(h => h.source))].join(', ')
       const headlines = r.hits.slice(0, 3).map(h => `  • "${h.title}" — ${h.source}`).join('\n')
-      const tag = r.isMagnitude ? ' ⚠️ MAGNITUDE-GATE STORY' : ''
+      const tag = r.tag === 'magnitude' ? ' ⚠️ MAGNITUDE-GATE' : r.tag === 'gap' ? ' 🔍 GAP SEARCH (not in digest)' : ''
       return `**${r.topic}**${tag} (${r.hits.length} results from: ${sourceList})\n${headlines}`
     })
     .join('\n\n')
@@ -277,7 +313,9 @@ Rate confidence using this hierarchy:
 
 **Critical rule:** Never rate a story 🔴 UNVERIFIED if the external Google News search confirmed it. The search results are real — trust them.
 
-**Magnitude-gate stories** are marked ⚠️ MAGNITUDE-GATE STORY in the verification section. These are globally significant events that were specifically searched regardless of digest coverage. If Google News confirmed them, treat as 🟢 HIGH and ensure they appear in your top stories — do not bury them.
+**Magnitude-gate stories** are marked ⚠️ MAGNITUDE-GATE in the verification section. These are globally significant events specifically searched regardless of digest coverage. If confirmed, treat as 🟢 HIGH and include in top stories.
+
+**Gap searches** are marked 🔍 GAP SEARCH (not in digest). These are topics that were identified as potentially missing from the digest based on the macro context — the model asked "what should be happening that I'm not seeing?" If a gap search returned results, include those findings in your report as additional context the digest missed.
 
 ## MACRO OVERVIEW
 Lead with the live market numbers (exact figures for S&P, Nasdaq, Dow, WTI oil, VIX). Explain what is driving each number based on the verified news. Use specific percentages and prices, not vague directional language.

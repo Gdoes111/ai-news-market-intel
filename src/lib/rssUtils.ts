@@ -95,7 +95,7 @@ export const DEFAULT_RSS_FEEDS: RSSFeed[] = [
     name: 'Zero Hedge',
     url: 'https://feeds.feedburner.com/zerohedge/feed',
     category: 'market',
-    enabled: false
+    enabled: true
   },
   // === TIER 4: Entertainment/Pop Culture (TMZ etc for Polymarket) ===
   {
@@ -118,14 +118,14 @@ export const DEFAULT_RSS_FEEDS: RSSFeed[] = [
     name: 'CoinDesk',
     url: 'https://www.coindesk.com/arc/outboundfeeds/rss/',
     category: 'market',
-    enabled: false
+    enabled: true
   },
   {
     id: 'the-block',
     name: 'The Block',
     url: 'https://www.theblock.co/rss.xml',
     category: 'market',
-    enabled: false
+    enabled: true
   },
   // === TIER 6: Asia Markets ===
   {
@@ -133,7 +133,43 @@ export const DEFAULT_RSS_FEEDS: RSSFeed[] = [
     name: 'Nikkei Asia',
     url: 'https://asia.nikkei.com/rss/feed/nar',
     category: 'market',
-    enabled: false
+    enabled: true
+  },
+  // === TIER 7: Reddit Sentiment ===
+  {
+    id: 'reddit-wallstreetbets',
+    name: 'Reddit WallStreetBets',
+    url: 'https://www.reddit.com/r/wallstreetbets/top/.rss?t=day',
+    category: 'market',
+    enabled: true
+  },
+  {
+    id: 'reddit-investing',
+    name: 'Reddit Investing',
+    url: 'https://www.reddit.com/r/investing/top/.rss?t=day',
+    category: 'market',
+    enabled: true
+  },
+  {
+    id: 'reddit-geopolitics',
+    name: 'Reddit Geopolitics',
+    url: 'https://www.reddit.com/r/geopolitics/top/.rss?t=day',
+    category: 'geopolitical',
+    enabled: true
+  },
+  {
+    id: 'reddit-worldnews',
+    name: 'Reddit WorldNews',
+    url: 'https://www.reddit.com/r/worldnews/top/.rss?t=day',
+    category: 'geopolitical',
+    enabled: true
+  },
+  {
+    id: 'reddit-economics',
+    name: 'Reddit Economics',
+    url: 'https://www.reddit.com/r/economics/top/.rss?t=day',
+    category: 'market',
+    enabled: true
   }
 ]
 
