@@ -11,6 +11,7 @@ import { AddNewsDialog } from '@/components/AddNewsDialog'
 import { RSSFeedDialog } from '@/components/RSSFeedDialog'
 import { AnalystDialog } from '@/components/AnalystDialog'
 import { PolymarketDialog } from '@/components/PolymarketDialog'
+import { ChatAssistant } from '@/components/ChatAssistant'
 import { EmptyState } from '@/components/EmptyState'
 import { Toaster } from '@/components/ui/sonner'
 import { useAutoRefresh } from '@/hooks/use-auto-refresh'
@@ -19,6 +20,9 @@ import { toast } from 'sonner'
 function App() {
   const [news, setNews] = useLocalStorage<NewsItem[]>('news-items', [])
   const [feeds] = useLocalStorage<any[]>('rss-feeds', [])
+  const [analystReports] = useLocalStorage<any[]>('analyst-memory', [])
+  const [polymarketAnalyses] = useLocalStorage<any[]>('polymarket-memory', [])
+  const [verifiedFacts] = useLocalStorage<string[]>('analyst-verified-facts', [])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [rssDialogOpen, setRssDialogOpen] = useState(false)
   const [analystOpen, setAnalystOpen] = useState(false)
@@ -254,6 +258,13 @@ function App() {
       <AnalystDialog open={analystOpen} onOpenChange={setAnalystOpen} newsItems={allNews} />
 
       <PolymarketDialog open={polymarketOpen} onOpenChange={setPolymarketOpen} newsItems={allNews} />
+
+      <ChatAssistant
+        newsItems={allNews}
+        analystReports={analystReports || []}
+        polymarketAnalyses={polymarketAnalyses || []}
+        verifiedFacts={verifiedFacts || []}
+      />
 
       <Toaster position="top-right" />
     </div>
