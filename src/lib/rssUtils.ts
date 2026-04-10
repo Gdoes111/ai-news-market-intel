@@ -173,6 +173,20 @@ export const DEFAULT_RSS_FEEDS: RSSFeed[] = [
   },
   // === TIER 8: Australia (priority — G is based here) ===
   {
+    id: 'the-conversation-au',
+    name: 'The Conversation Australia',
+    url: 'https://theconversation.com/au/articles.atom',
+    category: 'general',
+    enabled: true
+  },
+  {
+    id: 'the-conversation-global',
+    name: 'The Conversation Global',
+    url: 'https://theconversation.com/global/articles.atom',
+    category: 'general',
+    enabled: true
+  },
+  {
     id: 'abc-australia',
     name: 'ABC News Australia',
     url: 'https://www.abc.net.au/news/feed/51120/rss.xml',
