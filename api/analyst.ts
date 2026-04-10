@@ -22,12 +22,43 @@ async function fetchMarketSnapshot(): Promise<string> {
     }
     const lines = quotes.map((q: any) => {
       const chg = q.regularMarketChangePercent?.toFixed(2)
-      const arrow = chg > 0 ? '▲' : '▼'
-      return `${labels[q.symbol] || q.symbol}: $${q.regularMarketPrice?.toFixed(2)} (${arrow}${Math.abs(chg)}%)`
+      const arrow = parseFloat(chg) > 0 ? '▲' : '▼'
+      return `${labels[q.symbol] || q.symbol}: $${q.regularMarketPrice?.toFixed(2)} (${arrow}${Math.abs(parseFloat(chg))}%)`
     })
     return lines.join('\n')
   } catch (e) {
     return `Live market data unavailable: ${e}`
+  }
+}
+
+// Search Google News RSS for a topic — returns real headlines + sources
+async function searchGoogleNews(query: string): Promise<{ title: string; source: string }[]> {
+  try {
+    const encoded = encodeURIComponent(query)
+    const url = `https://news.google.com/rss/search?q=${encoded}&hl=en-US&gl=US&ceid=US:en`
+    const resp = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/rss+xml' }
+    })
+    if (!resp.ok) return []
+    const xml = await resp.text()
+    const results: { title: string; source: string }[] = []
+    const itemRegex = /<item>([\s\S]*?)<\/item>/g
+    let match
+    while ((match = itemRegex.exec(xml)) !== null && results.length < 6) {
+      const item = match[1]
+      const titleMatch = item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) || item.match(/<title>(.*?)<\/title>/)
+      const sourceMatch = item.match(/<source[^>]*>(.*?)<\/source>/)
+      if (titleMatch) {
+        // Google News titles often end with " - Source Name"
+        const rawTitle = titleMatch[1]
+        const sourceName = sourceMatch?.[1] || rawTitle.split(' - ').pop() || 'Unknown'
+        const cleanTitle = rawTitle.includes(' - ') ? rawTitle.split(' - ').slice(0, -1).join(' - ') : rawTitle
+        results.push({ title: cleanTitle.trim(), source: sourceName.trim() })
+      }
+    }
+    return results
+  } catch {
+    return []
   }
 }
 
@@ -38,19 +69,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const top50 = newsItems.slice(0, 50)
 
-  // --- Fetch live market data + clustering in parallel ---
+  // --- Step 1: Fetch live market data + cluster articles in parallel ---
   const [marketSnapshot, clusteringCompletion] = await Promise.all([
     fetchMarketSnapshot(),
     openai.chat.completions.create({
-    model: 'gpt-5.4-mini',
-    messages: [
-      {
-        role: 'system',
-        content: 'You are a news editor. Group news articles that cover the same story or event into clusters. Return ONLY valid JSON.'
-      },
-      {
-        role: 'user',
-        content: `Group these ${top50.length} articles into topic clusters. Articles covering the same event (even from different sources) go in the same cluster.
+      model: 'gpt-5.4-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a news editor. Group news articles that cover the same story or event into clusters. Return ONLY valid JSON.'
+        },
+        {
+          role: 'user',
+          content: `Group these ${top50.length} articles into topic clusters. Articles covering the same event (even from different sources) go in the same cluster. Also score each cluster 1-10 for market significance.
 
 ${top50.map((item: any, i: number) => `${i}: [${item.source}] ${item.title}`).join('\n')}
 
@@ -59,25 +90,49 @@ Return JSON:
   "clusters": [
     {
       "topic": "Short topic label",
+      "searchQuery": "3-5 word Google News search query to verify this story",
       "articleIndices": [0, 3, 7],
       "sourceCount": 3,
-      "sources": ["Reuters", "CNBC", "Bloomberg"]
+      "sources": ["Reuters", "CNBC", "Bloomberg"],
+      "significance": 8
     }
   ]
 }`
-      }
-    ],
+        }
+      ],
       response_format: { type: 'json_object' }
     })
   ])
 
-  let clusters: { topic: string; articleIndices: number[]; sourceCount: number; sources: string[] }[] = []
+  let clusters: { topic: string; searchQuery: string; articleIndices: number[]; sourceCount: number; sources: string[]; significance: number }[] = []
   try {
     const parsed = JSON.parse(clusteringCompletion.choices[0].message.content || '{}')
     clusters = parsed.clusters || []
   } catch {}
 
-  // Build cluster index map: article index -> cluster info
+  // --- Step 2: Research the top 8 most significant clusters via Google News ---
+  const topClusters = [...clusters]
+    .sort((a, b) => (b.significance || 0) - (a.significance || 0))
+    .slice(0, 8)
+
+  const researchResults = await Promise.all(
+    topClusters.map(async (cluster) => {
+      const hits = await searchGoogleNews(cluster.searchQuery || cluster.topic)
+      return { topic: cluster.topic, hits }
+    })
+  )
+
+  // Build external verification summary
+  const externalVerification = researchResults
+    .filter(r => r.hits.length > 0)
+    .map(r => {
+      const sourceList = [...new Set(r.hits.map(h => h.source))].join(', ')
+      const headlines = r.hits.slice(0, 3).map(h => `  • "${h.title}" — ${h.source}`).join('\n')
+      return `**${r.topic}** (${r.hits.length} results from: ${sourceList})\n${headlines}`
+    })
+    .join('\n\n')
+
+  // Build cluster index map for the digest
   const articleClusterMap = new Map<number, { topic: string; sourceCount: number; sources: string[] }>()
   for (const cluster of clusters) {
     for (const idx of cluster.articleIndices) {
@@ -89,7 +144,7 @@ Return JSON:
     .map((item: any, i: number) => {
       const cluster = articleClusterMap.get(i)
       const clusterLine = cluster
-        ? `\n   [STORY CLUSTER: "${cluster.topic}" — ${cluster.sourceCount} source(s): ${cluster.sources.join(', ')}]`
+        ? `\n   [STORY CLUSTER: "${cluster.topic}" — ${cluster.sourceCount} source(s) in digest: ${cluster.sources.join(', ')}]`
         : ''
       return `${i + 1}. [Priority ${item.priority}/10] [Source: ${item.source}] ${item.title}\n   Summary: ${item.summary}${clusterLine}`
     })
@@ -107,6 +162,11 @@ Return JSON:
   const userPrompt = `## LIVE MARKET SNAPSHOT (fetched now)
 ${marketSnapshot}
 
+## EXTERNAL VERIFICATION (live Google News searches, run just now)
+The following topics were independently searched on Google News to verify coverage beyond this digest:
+
+${externalVerification || 'External search unavailable — use digest sources only.'}
+
 ## CURRENT NEWS DIGEST (${newsItems.length} articles from multiple sources)
 ${newsDigest}
 
@@ -114,54 +174,49 @@ ${newsDigest}
 ${memoryContext}
 
 ## YOUR TASK
-Produce a comprehensive market intelligence report. Anchor every macro claim to the live market numbers above. Before making ANY recommendation, verify claims by cross-referencing sources.
+Produce a comprehensive market intelligence report. Anchor every macro claim to the live market numbers above. Use the EXTERNAL VERIFICATION section as ground truth for confidence ratings — if Google News returned 5+ results from major outlets, that story is confirmed regardless of how many articles are in the digest.
 
 ## SOURCE VERIFICATION RULES
-Your digest is a SAMPLE of the news environment, not the full picture. Many stories that appear single-source in this digest are actually massively confirmed across the broader media. Apply confidence ratings using ALL of these signals together:
+Rate confidence using this hierarchy:
 
-**Signal 1 — Cluster count (primary)**
-Each article has a [STORY CLUSTER] tag. Use it:
-- 🟢 HIGH CONFIDENCE — 3+ sources in cluster
-- 🟡 MEDIUM CONFIDENCE — 2 sources in cluster
-- 🔴 UNVERIFIED — 1 source in cluster
+**1. External verification (highest weight)**
+- Google News search returned 4+ results from independent outlets → 🟢 HIGH CONFIDENCE
+- Google News search returned 2-3 results → 🟡 MEDIUM CONFIDENCE
+- Google News search returned 0-1 results OR topic wasn't searched → fall back to digest signals
 
-**Signal 2 — Source weight (override)**
-A single Bloomberg, Reuters, AP, WSJ, or FT report on a major macro event = 🟡 MEDIUM minimum.
-A single CNBC, BBC, Al Jazeera, or major national wire on a clearly significant story = still 🟡 MEDIUM.
+**2. Digest cluster count (fallback)**
+- 3+ sources in digest cluster → 🟢 HIGH CONFIDENCE
+- 2 sources in cluster → 🟡 MEDIUM CONFIDENCE
+- 1 source, major wire (Bloomberg/Reuters/AP/WSJ/FT) → 🟡 MEDIUM CONFIDENCE
+- 1 source, smaller outlet → 🔴 UNVERIFIED
 
-**Signal 3 — Story significance (critical override)**
-If a story, IF TRUE, would be a top-5 global macro event (e.g. major oil field attacked, world leader killed, central bank emergency move), do NOT rate it 🔴 UNVERIFIED just because your digest only has one article. Escalate to 🟡 MEDIUM and flag: "likely broader coverage outside this digest."
-
-**Signal 4 — Digest tunnel vision warning**
-Your digest contains ~50–90 articles. The real news environment has thousands. When a story looks single-source in your digest BUT is of major geopolitical or macro significance, note: "Single source in digest — likely confirmed elsewhere."
-
-NEVER rate a story 🔴 UNVERIFIED solely because details in the summary are thin. Source count and story significance are the real signals.`
+**Critical rule:** Never rate a story 🔴 UNVERIFIED if the external Google News search confirmed it. The search results are real — trust them.
 
 ## MACRO OVERVIEW
-Lead with the live market numbers (S&P, Nasdaq, Dow % moves, oil price, VIX level). Then explain what is driving those numbers based on the news. Be specific — exact figures, not vague directional language. "S&P +2.5% on ceasefire relief, WTI at $99 despite Hormuz still 90% closed" is the standard, not "equities are rallying."
+Lead with the live market numbers (exact figures for S&P, Nasdaq, Dow, WTI oil, VIX). Explain what is driving each number based on the verified news. Use specific percentages and prices, not vague directional language.
 
 ## TOP STORIES & REAL IMPLICATIONS
-The 5 most important stories with source confidence ratings. What does each really mean for markets? Connect the dots. Name the companies and sectors affected. Flag any stories that seem suspiciously quiet in mainstream media.
+The 5 most important stories with confidence ratings based on external verification. What does each mean for markets? Name specific companies, tickers, sectors affected.
 
 ## STOCKS TO WATCH
-List specific companies with ticker symbols, a confidence rating, and 2-3 sentences explaining exactly WHY you're flagging each one. Only recommend based on HIGH or MEDIUM confidence news.
+Specific companies with tickers, confidence rating, and 2-3 sentences on exactly why. Only HIGH or MEDIUM confidence stories.
 
 ## UPCOMING OPPORTUNITIES
-IPOs, mergers, acquisitions, earnings on radar. Confidence level for each. Be specific about timing.
+IPOs, mergers, earnings on radar. Confidence level, specific timing.
 
 ## SECTORS IN PLAY
-Hot/cold sectors with detailed reasoning. What is driving each sector right now?
+Hot/cold sectors with detailed reasoning tied to verified news.
 
 ## RISKS & RED FLAGS
-Specific tail risks. Unverified stories that could move markets if confirmed. Stories getting underreported.
+Specific tail risks. What's genuinely unverified. What's underreported even after external search.
 
 ## TREND COMPARISON
-Compare to past analyses. What patterns are emerging? What has changed since last time?
+Compare to past analyses. What patterns are emerging?
 
 ## ACTION ITEMS
-5 concrete, specific things to research or consider this week with reasoning. Only based on verified or high-confidence information.
+5 concrete, specific things to act on this week. Only from verified/high-confidence information.
 
-Be extremely detailed and direct. Name specific companies, tickers, people, events. Explain your reasoning fully. This is for someone making real financial decisions who needs to understand the WHY behind every call. Do not be vague or generic.`
+Be extremely detailed and direct. Name specific companies, tickers, people, events. This is for someone making real financial decisions.`
 
   try {
     const completion = await openai.chat.completions.create({
@@ -174,11 +229,11 @@ Be extremely detailed and direct. Name specific companies, tickers, people, even
     })
 
     const rawContent = completion.choices[0].message.content
-    console.log('gpt-5.1 finish_reason:', completion.choices[0].finish_reason)
-    console.log('gpt-5.1 content length:', rawContent?.length ?? 0)
+    console.log('gpt-5.4 finish_reason:', completion.choices[0].finish_reason)
+    console.log('gpt-5.4 content length:', rawContent?.length ?? 0)
 
     if (!rawContent || rawContent.trim().length < 100) {
-      console.error('gpt-5.1 returned empty or too-short content:', rawContent)
+      console.error('gpt-5.4 returned empty or too-short content:', rawContent)
       return res.status(500).json({ error: 'Analysis failed', message: 'Model returned empty response. Try again.' })
     }
 
