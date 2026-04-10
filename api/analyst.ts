@@ -6,6 +6,31 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 // Extend Vercel function timeout to 300s (requires Pro plan; on hobby it caps at 60s)
 export const maxDuration = 300
 
+// Fetch live market snapshot from Yahoo Finance (no API key needed)
+async function fetchMarketSnapshot(): Promise<string> {
+  try {
+    const symbols = ['SPY', 'QQQ', 'DIA', 'CL=F', 'BZ=F', '^TNX', 'GC=F', '^VIX', 'DX-Y.NYB']
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols.join(',')}&fields=symbol,shortName,regularMarketPrice,regularMarketChangePercent,regularMarketTime`
+    const resp = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } })
+    if (!resp.ok) throw new Error(`Yahoo Finance error: ${resp.status}`)
+    const data = await resp.json()
+    const quotes = data?.quoteResponse?.result || []
+    const labels: Record<string, string> = {
+      'SPY': 'S&P 500 ETF', 'QQQ': 'Nasdaq 100 ETF', 'DIA': 'Dow Jones ETF',
+      'CL=F': 'WTI Crude Oil', 'BZ=F': 'Brent Crude', '^TNX': '10Y Treasury Yield',
+      'GC=F': 'Gold', '^VIX': 'VIX (Fear Index)', 'DX-Y.NYB': 'US Dollar Index'
+    }
+    const lines = quotes.map((q: any) => {
+      const chg = q.regularMarketChangePercent?.toFixed(2)
+      const arrow = chg > 0 ? '▲' : '▼'
+      return `${labels[q.symbol] || q.symbol}: $${q.regularMarketPrice?.toFixed(2)} (${arrow}${Math.abs(chg)}%)`
+    })
+    return lines.join('\n')
+  } catch (e) {
+    return `Live market data unavailable: ${e}`
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
 
@@ -13,8 +38,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const top50 = newsItems.slice(0, 50)
 
-  // --- Clustering pre-pass: group articles by topic so model can count sources properly ---
-  const clusteringCompletion = await openai.chat.completions.create({
+  // --- Fetch live market data + clustering in parallel ---
+  const [marketSnapshot, clusteringCompletion] = await Promise.all([
+    fetchMarketSnapshot(),
+    openai.chat.completions.create({
     model: 'gpt-5.4-mini',
     messages: [
       {
@@ -40,8 +67,9 @@ Return JSON:
 }`
       }
     ],
-    response_format: { type: 'json_object' }
-  })
+      response_format: { type: 'json_object' }
+    })
+  ])
 
   let clusters: { topic: string; articleIndices: number[]; sourceCount: number; sources: string[] }[] = []
   try {
@@ -76,24 +104,41 @@ Return JSON:
 
   const systemPrompt = `You are an elite market intelligence analyst with the instincts of an investigative journalist and the precision of a hedge fund analyst. You think critically, cross-check claims, and distinguish between verified facts and unverified rumours before making any market calls.`
 
-  const userPrompt = `## CURRENT NEWS DIGEST (${newsItems.length} articles from multiple sources)
+  const userPrompt = `## LIVE MARKET SNAPSHOT (fetched now)
+${marketSnapshot}
+
+## CURRENT NEWS DIGEST (${newsItems.length} articles from multiple sources)
 ${newsDigest}
 
 ## PAST ANALYSIS MEMORY
 ${memoryContext}
 
 ## YOUR TASK
-Produce a comprehensive market intelligence report. Before making ANY recommendation, verify claims by cross-referencing sources.
+Produce a comprehensive market intelligence report. Anchor every macro claim to the live market numbers above. Before making ANY recommendation, verify claims by cross-referencing sources.
 
-## SOURCE VERIFICATION
-Each article includes a [STORY CLUSTER] tag showing how many other sources are independently reporting the same event. Use this to rate confidence — do NOT downgrade confirmed stories just because the individual summary seems thin:
-- 🟢 HIGH CONFIDENCE — cluster shows 3+ independent sources corroborating
-- 🟡 MEDIUM CONFIDENCE — cluster shows 2 sources, or 1 major wire (Bloomberg, Reuters, AP, CNBC)
-- 🔴 UNVERIFIED — cluster shows only 1 source AND it's not a major wire
-IMPORTANT: If the cluster tag shows 5+ sources, treat as confirmed fact even if details in the summary are sparse. The number of sources is the primary confidence signal.
+## SOURCE VERIFICATION RULES
+Your digest is a SAMPLE of the news environment, not the full picture. Many stories that appear single-source in this digest are actually massively confirmed across the broader media. Apply confidence ratings using ALL of these signals together:
+
+**Signal 1 — Cluster count (primary)**
+Each article has a [STORY CLUSTER] tag. Use it:
+- 🟢 HIGH CONFIDENCE — 3+ sources in cluster
+- 🟡 MEDIUM CONFIDENCE — 2 sources in cluster
+- 🔴 UNVERIFIED — 1 source in cluster
+
+**Signal 2 — Source weight (override)**
+A single Bloomberg, Reuters, AP, WSJ, or FT report on a major macro event = 🟡 MEDIUM minimum.
+A single CNBC, BBC, Al Jazeera, or major national wire on a clearly significant story = still 🟡 MEDIUM.
+
+**Signal 3 — Story significance (critical override)**
+If a story, IF TRUE, would be a top-5 global macro event (e.g. major oil field attacked, world leader killed, central bank emergency move), do NOT rate it 🔴 UNVERIFIED just because your digest only has one article. Escalate to 🟡 MEDIUM and flag: "likely broader coverage outside this digest."
+
+**Signal 4 — Digest tunnel vision warning**
+Your digest contains ~50–90 articles. The real news environment has thousands. When a story looks single-source in your digest BUT is of major geopolitical or macro significance, note: "Single source in digest — likely confirmed elsewhere."
+
+NEVER rate a story 🔴 UNVERIFIED solely because details in the summary are thin. Source count and story significance are the real signals.`
 
 ## MACRO OVERVIEW
-Current market environment. Key themes with confidence ratings. Be specific — what is actually happening right now?
+Lead with the live market numbers (S&P, Nasdaq, Dow % moves, oil price, VIX level). Then explain what is driving those numbers based on the news. Be specific — exact figures, not vague directional language. "S&P +2.5% on ceasefire relief, WTI at $99 despite Hormuz still 90% closed" is the standard, not "equities are rallying."
 
 ## TOP STORIES & REAL IMPLICATIONS
 The 5 most important stories with source confidence ratings. What does each really mean for markets? Connect the dots. Name the companies and sectors affected. Flag any stories that seem suspiciously quiet in mainstream media.
