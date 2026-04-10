@@ -91,7 +91,7 @@ export function ChatAssistant({ newsItems, analystReports, polymarketAnalyses, v
 
       {/* Chat panel */}
       <div className={cn(
-        'fixed bottom-6 right-6 z-50 w-[380px] max-w-[calc(100vw-2rem)] rounded-2xl shadow-2xl border border-border bg-card flex flex-col transition-all duration-300 origin-bottom-right',
+        'fixed bottom-6 right-6 z-50 w-[380px] max-w-[calc(100vw-2rem)] rounded-2xl shadow-2xl border border-border bg-card flex flex-col overflow-hidden transition-all duration-300 origin-bottom-right',
         open ? 'scale-100 opacity-100' : 'scale-95 opacity-0 pointer-events-none'
       )}
         style={{ height: '520px' }}
@@ -111,7 +111,7 @@ export function ChatAssistant({ newsItems, analystReports, polymarketAnalyses, v
         </div>
 
         {/* Messages */}
-        <ScrollArea className="flex-1 px-4 py-3">
+        <ScrollArea className="flex-1 min-h-0 overflow-hidden px-4 py-3">
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center gap-3 text-center py-8">
               <Brain size={40} weight="duotone" className="text-muted-foreground" />
