@@ -193,6 +193,7 @@ Return JSON:
     clusters = parsed.clusters || []
   } catch {}
 
+  let magnitudeStories: { index: number; topic: string; searchQuery: string }[] = []
   try {
     const parsed = JSON.parse(preMagnitudeCompletion.choices[0].message.content || '{}')
     magnitudeStories = parsed.magnitudeStories || []
