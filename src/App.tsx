@@ -4,13 +4,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { Newspaper, TrendUp, Lightning, Plus, Rss, Timer, Brain, ChartLine } from '@phosphor-icons/react'
+import { Newspaper, TrendUp, Lightning, Plus, Rss, Timer, Brain, ChartLine, Globe } from '@phosphor-icons/react'
 import { NewsItem } from '@/lib/types'
 import { NewsCard } from '@/components/NewsCard'
 import { AddNewsDialog } from '@/components/AddNewsDialog'
 import { RSSFeedDialog } from '@/components/RSSFeedDialog'
 import { AnalystDialog } from '@/components/AnalystDialog'
 import { PolymarketDialog } from '@/components/PolymarketDialog'
+import { WorldIntelDialog } from '@/components/WorldIntelDialog'
 import { ChatAssistant } from '@/components/ChatAssistant'
 import { EmptyState } from '@/components/EmptyState'
 import { Toaster } from '@/components/ui/sonner'
@@ -27,6 +28,7 @@ function App() {
   const [rssDialogOpen, setRssDialogOpen] = useState(false)
   const [analystOpen, setAnalystOpen] = useState(false)
   const [polymarketOpen, setPolymarketOpen] = useState(false)
+  const [worldIntelOpen, setWorldIntelOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('priority')
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false)
 
@@ -137,6 +139,15 @@ function App() {
               >
                 <ChartLine size={20} weight="duotone" />
                 <span className="hidden sm:inline">Polymarket</span>
+              </Button>
+              <Button
+                onClick={() => setWorldIntelOpen(true)}
+                size="lg"
+                variant="outline"
+                className="gap-2 border-blue-500/50 hover:border-blue-400 hover:bg-blue-500/10 text-blue-400"
+              >
+                <Globe size={20} weight="duotone" />
+                <span className="hidden sm:inline">World Intel</span>
               </Button>
               <Button 
                 onClick={() => setRssDialogOpen(true)}
@@ -256,6 +267,7 @@ function App() {
       />
 
       <AnalystDialog open={analystOpen} onOpenChange={setAnalystOpen} newsItems={allNews} />
+      <WorldIntelDialog open={worldIntelOpen} onOpenChange={setWorldIntelOpen} newsItems={allNews} />
 
       <PolymarketDialog open={polymarketOpen} onOpenChange={setPolymarketOpen} newsItems={allNews} />
 

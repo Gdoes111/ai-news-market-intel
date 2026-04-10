@@ -444,6 +444,265 @@ export const DEFAULT_RSS_FEEDS: RSSFeed[] = [
     url: 'https://www.reddit.com/r/economics/top/.rss?t=day',
     category: 'market',
     enabled: true
+  },
+  // === TIER 16: AI & Machine Learning ===
+  {
+    id: 'mit-tech-review',
+    name: 'MIT Technology Review',
+    url: 'https://www.technologyreview.com/feed/',
+    category: 'technology',
+    enabled: true
+  },
+  {
+    id: 'venturebeat-ai',
+    name: 'VentureBeat AI',
+    url: 'https://venturebeat.com/category/ai/feed/',
+    category: 'technology',
+    enabled: true
+  },
+  {
+    id: 'the-gradient',
+    name: 'The Gradient (AI Research)',
+    url: 'https://thegradient.pub/rss/',
+    category: 'technology',
+    enabled: true
+  },
+  {
+    id: 'import-ai',
+    name: 'Import AI (Jack Clark)',
+    url: 'https://importai.substack.com/feed',
+    category: 'technology',
+    enabled: true
+  },
+  {
+    id: 'reddit-machinelearning',
+    name: 'Reddit MachineLearning',
+    url: 'https://www.reddit.com/r/MachineLearning/top/.rss?t=day',
+    category: 'technology',
+    enabled: true
+  },
+  {
+    id: 'reddit-artificial',
+    name: 'Reddit Artificial Intelligence',
+    url: 'https://www.reddit.com/r/artificial/top/.rss?t=day',
+    category: 'technology',
+    enabled: true
+  },
+  {
+    id: 'huggingface-blog',
+    name: 'Hugging Face Blog',
+    url: 'https://huggingface.co/blog/feed.xml',
+    category: 'technology',
+    enabled: true
+  },
+  // === TIER 17: General Tech & Semiconductors ===
+  {
+    id: 'the-verge',
+    name: 'The Verge',
+    url: 'https://www.theverge.com/rss/index.xml',
+    category: 'technology',
+    enabled: true
+  },
+  {
+    id: 'ars-technica',
+    name: 'Ars Technica',
+    url: 'https://feeds.arstechnica.com/arstechnica/index',
+    category: 'technology',
+    enabled: true
+  },
+  {
+    id: 'wired',
+    name: 'Wired',
+    url: 'https://www.wired.com/feed/rss',
+    category: 'technology',
+    enabled: true
+  },
+  {
+    id: 'techcrunch',
+    name: 'TechCrunch',
+    url: 'https://techcrunch.com/feed/',
+    category: 'technology',
+    enabled: true
+  },
+  {
+    id: 'ieee-spectrum',
+    name: 'IEEE Spectrum',
+    url: 'https://spectrum.ieee.org/feeds/feed.rss',
+    category: 'technology',
+    enabled: true
+  },
+  {
+    id: 'anandtech',
+    name: 'AnandTech (Chips/Hardware)',
+    url: 'https://www.anandtech.com/rss/',
+    category: 'technology',
+    enabled: true
+  },
+  {
+    id: 'semianalysis',
+    name: 'SemiAnalysis (Semiconductors)',
+    url: 'https://www.semianalysis.com/feed',
+    category: 'technology',
+    enabled: true
+  },
+  {
+    id: 'tomshardware',
+    name: 'Tom\'s Hardware (GPUs/Chips)',
+    url: 'https://www.tomshardware.com/feeds/all',
+    category: 'technology',
+    enabled: true
+  },
+  {
+    id: 'reddit-nvidia',
+    name: 'Reddit Nvidia',
+    url: 'https://www.reddit.com/r/nvidia/top/.rss?t=day',
+    category: 'technology',
+    enabled: true
+  },
+  {
+    id: 'reddit-hardware',
+    name: 'Reddit Hardware',
+    url: 'https://www.reddit.com/r/hardware/top/.rss?t=day',
+    category: 'technology',
+    enabled: true
+  },
+  // === TIER 18: Quantum Computing & Science ===
+  {
+    id: 'quanta-magazine',
+    name: 'Quanta Magazine',
+    url: 'https://api.quantamagazine.org/feed/',
+    category: 'technology',
+    enabled: true
+  },
+  {
+    id: 'quantum-computing-report',
+    name: 'Quantum Computing Report',
+    url: 'https://quantumcomputingreport.com/feed/',
+    category: 'technology',
+    enabled: true
+  },
+  {
+    id: 'the-quantum-insider',
+    name: 'The Quantum Insider',
+    url: 'https://thequantuminsider.com/feed/',
+    category: 'technology',
+    enabled: true
+  },
+  {
+    id: 'reddit-quantum',
+    name: 'Reddit Quantum Computing',
+    url: 'https://www.reddit.com/r/QuantumComputing/top/.rss?t=day',
+    category: 'technology',
+    enabled: true
+  },
+  // === TIER 19: Space & Deep Science ===
+  {
+    id: 'nasa-breaking',
+    name: 'NASA Breaking News',
+    url: 'https://www.nasa.gov/news-release/feed/',
+    category: 'technology',
+    enabled: true
+  },
+  {
+    id: 'spacenews',
+    name: 'SpaceNews',
+    url: 'https://spacenews.com/feed/',
+    category: 'technology',
+    enabled: true
+  },
+  {
+    id: 'new-scientist',
+    name: 'New Scientist',
+    url: 'https://www.newscientist.com/feed/home/',
+    category: 'technology',
+    enabled: true
+  },
+  // === TIER 20: Biotech & Health ===
+  {
+    id: 'stat-news',
+    name: 'STAT News (Biotech/Health)',
+    url: 'https://www.statnews.com/feed/',
+    category: 'technology',
+    enabled: true
+  },
+  {
+    id: 'fierce-biotech',
+    name: 'Fierce Biotech',
+    url: 'https://www.fiercebiotech.com/rss/xml',
+    category: 'technology',
+    enabled: true
+  },
+  // === TIER 21: Startups & VC ===
+  {
+    id: 'techcrunch-startups',
+    name: 'TechCrunch Startups',
+    url: 'https://techcrunch.com/category/startups/feed/',
+    category: 'technology',
+    enabled: true
+  },
+  {
+    id: 'crunchbase-news',
+    name: 'Crunchbase News',
+    url: 'https://news.crunchbase.com/feed/',
+    category: 'technology',
+    enabled: true
+  },
+  {
+    id: 'sifted',
+    name: 'Sifted (European Startups)',
+    url: 'https://sifted.eu/feed',
+    category: 'technology',
+    enabled: true
+  },
+  // === TIER 22: World General News ===
+  {
+    id: 'bbc-world',
+    name: 'BBC World News',
+    url: 'https://feeds.bbci.co.uk/news/world/rss.xml',
+    category: 'general',
+    enabled: true
+  },
+  {
+    id: 'reuters-world',
+    name: 'Reuters World News',
+    url: 'https://feeds.reuters.com/reuters/worldNews',
+    category: 'general',
+    enabled: true
+  },
+  {
+    id: 'ap-world',
+    name: 'AP World News',
+    url: 'https://apnews.com/hub/world-news?format=feed',
+    category: 'general',
+    enabled: true
+  },
+  {
+    id: 'npr-world',
+    name: 'NPR World',
+    url: 'https://feeds.npr.org/1004/rss.xml',
+    category: 'general',
+    enabled: true
+  },
+  {
+    id: 'the-economist',
+    name: 'The Economist',
+    url: 'https://www.economist.com/international/rss.xml',
+    category: 'general',
+    enabled: true
+  },
+  {
+    id: 'foreign-affairs',
+    name: 'Foreign Affairs',
+    url: 'https://www.foreignaffairs.com/rss.xml',
+    category: 'geopolitical',
+    enabled: true
+  },
+  {
+    id: 'foreign-policy',
+    name: 'Foreign Policy',
+    url: 'https://foreignpolicy.com/feed/',
+    category: 'geopolitical',
+    enabled: true
   }
 ]
 

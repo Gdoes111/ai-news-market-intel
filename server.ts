@@ -8,7 +8,7 @@ const app = express()
 app.use(express.json({ limit: '10mb' }))
 
 // Dynamically load API routes
-const routes = ['analyze', 'fetch-rss', 'analyst', 'polymarket', 'chat']
+const routes = ['analyze', 'fetch-rss', 'analyst', 'polymarket', 'chat', 'worldintel']
 for (const route of routes) {
   const mod = await import(`./api/${route}.ts`)
   app.all(`/api/${route}`, mod.default)
