@@ -73,7 +73,7 @@ export function NewsCard({ news }: NewsCardProps) {
 
         <div className="flex flex-wrap items-center gap-2">
           <Tag size={14} weight="bold" className="text-muted-foreground" />
-          {news.categories.map((category) => (
+          {(news.categories || []).map((category) => (
             <Badge 
               key={category}
               variant="outline"
