@@ -15,7 +15,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // --- Clustering pre-pass: group articles by topic so model can count sources properly ---
   const clusteringCompletion = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
+    model: 'gpt-5.4-mini',
     messages: [
       {
         role: 'system',
@@ -120,7 +120,7 @@ Be extremely detailed and direct. Name specific companies, tickers, people, even
 
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-5.1',
+      model: 'gpt-5.4',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
@@ -140,7 +140,7 @@ Be extremely detailed and direct. Name specific companies, tickers, people, even
     const report = rawContent
 
     const structureCompletion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-5.4-mini',
       messages: [
         {
           role: 'system',
