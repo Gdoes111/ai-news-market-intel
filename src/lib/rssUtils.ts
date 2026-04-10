@@ -171,7 +171,118 @@ export const DEFAULT_RSS_FEEDS: RSSFeed[] = [
     category: 'market',
     enabled: true
   },
-  // === TIER 8: Reddit Sentiment ===
+  // === TIER 8: Europe ===
+  {
+    id: 'euronews',
+    name: 'Euronews',
+    url: 'https://www.euronews.com/rss?format=mrss&level=theme&name=news',
+    category: 'geopolitical',
+    enabled: true
+  },
+  {
+    id: 'ft-world',
+    name: 'Financial Times World',
+    url: 'https://www.ft.com/world?format=rss',
+    category: 'market',
+    enabled: true
+  },
+  {
+    id: 'dw-news',
+    name: 'DW News',
+    url: 'https://rss.dw.com/rdf/rss-en-all',
+    category: 'geopolitical',
+    enabled: true
+  },
+  // === TIER 9: Asia-Pacific ===
+  {
+    id: 'scmp',
+    name: 'South China Morning Post',
+    url: 'https://www.scmp.com/rss/91/feed',
+    category: 'geopolitical',
+    enabled: true
+  },
+  {
+    id: 'straits-times',
+    name: 'Straits Times',
+    url: 'https://www.straitstimes.com/news/world/rss.xml',
+    category: 'geopolitical',
+    enabled: true
+  },
+  {
+    id: 'the-hindu-business',
+    name: 'The Hindu Business Line',
+    url: 'https://www.thehindubusinessline.com/feeder/default.rss',
+    category: 'market',
+    enabled: true
+  },
+  {
+    id: 'abc-australia',
+    name: 'ABC News Australia',
+    url: 'https://www.abc.net.au/news/feed/51120/rss.xml',
+    category: 'general',
+    enabled: true
+  },
+  // === TIER 10: Americas (Latin America) ===
+  {
+    id: 'mercopress',
+    name: 'MercoPress (Latin America)',
+    url: 'https://en.mercopress.com/rss',
+    category: 'geopolitical',
+    enabled: true
+  },
+  {
+    id: 'rio-times',
+    name: 'Rio Times (Brazil)',
+    url: 'https://www.riotimesonline.com/feed/',
+    category: 'geopolitical',
+    enabled: true
+  },
+  // === TIER 11: Africa ===
+  {
+    id: 'african-business',
+    name: 'African Business Magazine',
+    url: 'https://african.business/feed',
+    category: 'market',
+    enabled: true
+  },
+  {
+    id: 'daily-maverick',
+    name: 'Daily Maverick (South Africa)',
+    url: 'https://www.dailymaverick.co.za/dmrss/',
+    category: 'geopolitical',
+    enabled: true
+  },
+  // === TIER 12: Russia / Eastern Europe / Central Asia ===
+  {
+    id: 'kyiv-independent',
+    name: 'Kyiv Independent',
+    url: 'https://kyivindependent.com/feed/',
+    category: 'geopolitical',
+    enabled: true
+  },
+  {
+    id: 'intellinews',
+    name: 'bne IntelliNews (Emerging Europe/CIS)',
+    url: 'https://www.intellinews.com/feed/',
+    category: 'geopolitical',
+    enabled: true
+  },
+  // === TIER 13: South Asia ===
+  {
+    id: 'dawn-pakistan',
+    name: 'Dawn (Pakistan)',
+    url: 'https://www.dawn.com/feeds/home',
+    category: 'geopolitical',
+    enabled: true
+  },
+  {
+    id: 'economic-times-india',
+    name: 'Economic Times India',
+    url: 'https://economictimes.indiatimes.com/rssfeedsdefault.cms',
+    category: 'market',
+    enabled: true
+  },
+  // === TIER 14: Reddit Sentiment ===
   {
     id: 'reddit-wallstreetbets',
     name: 'Reddit WallStreetBets',
