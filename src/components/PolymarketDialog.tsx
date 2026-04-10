@@ -94,7 +94,7 @@ export function PolymarketDialog({ open, onOpenChange, newsItems }: PolymarketDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-[800px] h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold flex items-center gap-2">
             <ChartLine size={28} weight="duotone" className="text-green-400" />
@@ -129,7 +129,7 @@ export function PolymarketDialog({ open, onOpenChange, newsItems }: PolymarketDi
           </Button>
         </div>
 
-        <ScrollArea className="flex-1 mt-4">
+        <ScrollArea className="flex-1 mt-4 min-h-0 overflow-hidden">
           {currentView === 'latest' && (
             <>
               {!latestAnalysis ? (
