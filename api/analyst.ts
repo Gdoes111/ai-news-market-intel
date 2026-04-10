@@ -6,29 +6,74 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 // Extend Vercel function timeout to 300s (requires Pro plan; on hobby it caps at 60s)
 export const maxDuration = 300
 
-// Fetch live market snapshot from Yahoo Finance (no API key needed)
+// Fetch live market snapshot from Yahoo Finance with cookie/crumb auth
 async function fetchMarketSnapshot(): Promise<string> {
+  const symbols = ['SPY', 'QQQ', 'DIA', 'CL=F', 'BZ=F', '^TNX', 'GC=F', '^VIX', 'DX-Y.NYB']
+  const labels: Record<string, string> = {
+    'SPY': 'S&P 500 ETF', 'QQQ': 'Nasdaq 100 ETF', 'DIA': 'Dow Jones ETF',
+    'CL=F': 'WTI Crude Oil', 'BZ=F': 'Brent Crude', '^TNX': '10Y Treasury Yield',
+    'GC=F': 'Gold', '^VIX': 'VIX (Fear Index)', 'DX-Y.NYB': 'US Dollar Index'
+  }
+  const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36'
+
+  // Try method 1: cookie + crumb handshake
   try {
-    const symbols = ['SPY', 'QQQ', 'DIA', 'CL=F', 'BZ=F', '^TNX', 'GC=F', '^VIX', 'DX-Y.NYB']
-    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols.join(',')}&fields=symbol,shortName,regularMarketPrice,regularMarketChangePercent,regularMarketTime`
-    const resp = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } })
-    if (!resp.ok) throw new Error(`Yahoo Finance error: ${resp.status}`)
+    const cookieResp = await fetch('https://finance.yahoo.com/', { headers: { 'User-Agent': ua } })
+    const rawCookies = cookieResp.headers.getSetCookie?.() || []
+    const cookieStr = rawCookies.map((c: string) => c.split(';')[0]).join('; ')
+
+    const crumbResp = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
+      headers: { 'User-Agent': ua, 'Cookie': cookieStr }
+    })
+    const crumb = await crumbResp.text()
+    if (!crumb || crumb.includes('<')) throw new Error('Bad crumb')
+
+    const url = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${symbols.join(',')}&crumb=${encodeURIComponent(crumb)}`
+    const resp = await fetch(url, { headers: { 'User-Agent': ua, 'Cookie': cookieStr } })
+    if (!resp.ok) throw new Error(`Yahoo v7+crumb: ${resp.status}`)
     const data = await resp.json()
     const quotes = data?.quoteResponse?.result || []
-    const labels: Record<string, string> = {
-      'SPY': 'S&P 500 ETF', 'QQQ': 'Nasdaq 100 ETF', 'DIA': 'Dow Jones ETF',
-      'CL=F': 'WTI Crude Oil', 'BZ=F': 'Brent Crude', '^TNX': '10Y Treasury Yield',
-      'GC=F': 'Gold', '^VIX': 'VIX (Fear Index)', 'DX-Y.NYB': 'US Dollar Index'
+    if (quotes.length === 0) throw new Error('Empty quotes')
+    return quotes.map((q: any) => {
+      const chg = parseFloat(q.regularMarketChangePercent?.toFixed(2))
+      const arrow = chg > 0 ? '▲' : '▼'
+      return `${labels[q.symbol] || q.symbol}: $${q.regularMarketPrice?.toFixed(2)} (${arrow}${Math.abs(chg)}%)`
+    }).join('\n')
+  } catch {}
+
+  // Try method 2: query1 v8 endpoint (sometimes bypasses auth)
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/quote?symbols=${symbols.join(',')}`
+    const resp = await fetch(url, { headers: { 'User-Agent': ua, 'Accept': 'application/json' } })
+    if (!resp.ok) throw new Error(`Yahoo v8: ${resp.status}`)
+    const data = await resp.json()
+    const quotes = data?.quoteResponse?.result || []
+    if (quotes.length === 0) throw new Error('Empty quotes')
+    return quotes.map((q: any) => {
+      const chg = parseFloat(q.regularMarketChangePercent?.toFixed(2))
+      const arrow = chg > 0 ? '▲' : '▼'
+      return `${labels[q.symbol] || q.symbol}: $${q.regularMarketPrice?.toFixed(2)} (${arrow}${Math.abs(chg)}%)`
+    }).join('\n')
+  } catch {}
+
+  // Try method 3: Fallback to individual Google Finance scrape via search RSS
+  try {
+    const fallbackSymbols = [['SPY', 'S&P 500'], ['CL=F', 'WTI Crude'], ['^VIX', 'VIX']]
+    const lines: string[] = []
+    for (const [sym, label] of fallbackSymbols) {
+      const hits = await fetch(`https://news.google.com/rss/search?q=${encodeURIComponent(sym + ' stock price today')}&hl=en-US&gl=US&ceid=US:en`, {
+        headers: { 'User-Agent': ua }
+      })
+      if (hits.ok) {
+        const xml = await hits.text()
+        const titleMatch = xml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)
+        if (titleMatch) lines.push(`${label}: see news — "${titleMatch[1].substring(0, 80)}"`)
+      }
     }
-    const lines = quotes.map((q: any) => {
-      const chg = q.regularMarketChangePercent?.toFixed(2)
-      const arrow = parseFloat(chg) > 0 ? '▲' : '▼'
-      return `${labels[q.symbol] || q.symbol}: $${q.regularMarketPrice?.toFixed(2)} (${arrow}${Math.abs(parseFloat(chg))}%)`
-    })
-    return lines.join('\n')
-  } catch (e) {
-    return `Live market data unavailable: ${e}`
-  }
+    if (lines.length > 0) return `[Yahoo Finance unavailable — partial data from news]\n${lines.join('\n')}`
+  } catch {}
+
+  return 'Live market data unavailable — all sources failed. Rely on prices mentioned in news articles.'
 }
 
 // Search Google News RSS for a topic — returns real headlines + sources
@@ -110,15 +155,52 @@ Return JSON:
     clusters = parsed.clusters || []
   } catch {}
 
-  // --- Step 2: Research the top 8 most significant clusters via Google News ---
+  // --- Step 2: Identify magnitude-gate stories (globally significant regardless of cluster rank) ---
+  // Ask mini to flag any story that would be a top-5 global macro event if true
+  const magnitudeCompletion = await openai.chat.completions.create({
+    model: 'gpt-5.4-mini',
+    messages: [
+      { role: 'system', content: 'You are a news editor. Return ONLY valid JSON.' },
+      {
+        role: 'user',
+        content: `From this list of news headlines, identify any stories that — if confirmed — would be a top-5 global macro or geopolitical event (e.g. world leader death, major oil infrastructure attack, central bank emergency action, war escalation, major sanctions).
+
+${top50.map((item: any, i: number) => `${i}: [${item.source}] ${item.title}`).join('\n')}
+
+Return JSON:
+{
+  "magnitudeStories": [
+    { "index": 0, "topic": "Short label", "searchQuery": "3-5 word Google News search" }
+  ]
+}`
+      }
+    ],
+    response_format: { type: 'json_object' }
+  })
+
+  let magnitudeStories: { index: number; topic: string; searchQuery: string }[] = []
+  try {
+    const parsed = JSON.parse(magnitudeCompletion.choices[0].message.content || '{}')
+    magnitudeStories = parsed.magnitudeStories || []
+  } catch {}
+
+  // --- Step 3: Research the top 8 clusters + all magnitude-gate stories via Google News ---
   const topClusters = [...clusters]
     .sort((a, b) => (b.significance || 0) - (a.significance || 0))
     .slice(0, 8)
 
+  // Merge cluster searches + magnitude searches (deduplicate by topic)
+  const allSearches: { topic: string; searchQuery: string; isMagnitude: boolean }[] = [
+    ...topClusters.map(c => ({ topic: c.topic, searchQuery: c.searchQuery || c.topic, isMagnitude: false })),
+    ...magnitudeStories
+      .filter(m => !topClusters.some(c => c.topic.toLowerCase().includes(m.topic.toLowerCase())))
+      .map(m => ({ topic: m.topic, searchQuery: m.searchQuery, isMagnitude: true }))
+  ]
+
   const researchResults = await Promise.all(
-    topClusters.map(async (cluster) => {
-      const hits = await searchGoogleNews(cluster.searchQuery || cluster.topic)
-      return { topic: cluster.topic, hits }
+    allSearches.map(async (s) => {
+      const hits = await searchGoogleNews(s.searchQuery)
+      return { topic: s.topic, hits, isMagnitude: s.isMagnitude }
     })
   )
 
@@ -128,7 +210,8 @@ Return JSON:
     .map(r => {
       const sourceList = [...new Set(r.hits.map(h => h.source))].join(', ')
       const headlines = r.hits.slice(0, 3).map(h => `  • "${h.title}" — ${h.source}`).join('\n')
-      return `**${r.topic}** (${r.hits.length} results from: ${sourceList})\n${headlines}`
+      const tag = r.isMagnitude ? ' ⚠️ MAGNITUDE-GATE STORY' : ''
+      return `**${r.topic}**${tag} (${r.hits.length} results from: ${sourceList})\n${headlines}`
     })
     .join('\n\n')
 
@@ -193,6 +276,8 @@ Rate confidence using this hierarchy:
 - 1 source, smaller outlet → 🔴 UNVERIFIED
 
 **Critical rule:** Never rate a story 🔴 UNVERIFIED if the external Google News search confirmed it. The search results are real — trust them.
+
+**Magnitude-gate stories** are marked ⚠️ MAGNITUDE-GATE STORY in the verification section. These are globally significant events that were specifically searched regardless of digest coverage. If Google News confirmed them, treat as 🟢 HIGH and ensure they appear in your top stories — do not bury them.
 
 ## MACRO OVERVIEW
 Lead with the live market numbers (exact figures for S&P, Nasdaq, Dow, WTI oil, VIX). Explain what is driving each number based on the verified news. Use specific percentages and prices, not vague directional language.
