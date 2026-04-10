@@ -357,27 +357,41 @@ Rate confidence using this hierarchy:
 **Gap searches** (🔍 GAP SEARCH) found stories not in the digest. Include these if they affect any Polymarket odds.
 **Magnitude-gate stories** (⚠️ MAGNITUDE-GATE) are globally significant — if confirmed, treat as 🟢 HIGH.
 
+## MANDATORY PRE-TRADE CHECKS
+Before recommending ANY trade, run all of these checks. Skip the trade if any check fails:
+
+**1. EXPIRY CHECK** — Is the resolve date in the future? If the resolve date has already passed, do NOT recommend the trade. State "EXPIRED — skip." This has caused errors before.
+
+**2. LEGAL ELIGIBILITY CHECK (elections)** — For any election or political appointment market, verify: Is the candidate legally eligible to run or be appointed? Search your knowledge for: "[candidate] legal status ban conviction [year]". If banned (e.g. Le Pen — convicted March 2025, 5-year ban upheld), do NOT recommend YES on their winning. State the ban clearly.
+
+**3. SPORTSBOOK CROSS-REFERENCE (sports)** — For any sports market, estimate what major sportsbooks (BetMGM, ESPN Bet, DraftKings) would price this at. If Polymarket is BELOW sportsbook consensus, the edge (if any) goes the opposite direction to what you might assume. Always note the sportsbook-implied probability.
+
+**4. FED PROXIMITY RULE** — If an FOMC meeting is within 30 days, CME FedWatch Tool pricing is extremely well-calibrated. Do NOT recommend fading the consensus without a specific, concrete catalyst theory (not just "uncertainty exists"). State the current FedWatch probability before any Fed trade recommendation.
+
+**5. CRYPTO ATH CONTEXT** — For any crypto price target, always state: (a) current price, (b) all-time high price, (c) whether target requires a new ATH and by what %, (d) current cycle position (bull/bear/recovery). "2.2x from here" and "27% above previous ATH from a post-cycle drawdown" describe the same trade very differently.
+
 ## FORMAT EACH OPPORTUNITY AS:
 
 ### [EXACT MARKET TITLE]
+**Resolve date:** [when — confirm this is in the future]
 **Current odds:** Yes X% / No Y%
+**Pre-trade checks passed:** [list which checks you ran and what they found]
 **What it should be:** ~Z% based on [evidence]
 **Edge:** [percentage points mispriced]
 **Confidence:** 🟢/🟡/🔴 [reasoning — cite specific sources from verification above]
 **Suggested position:** YES or NO, [small/medium/large] size
-**Resolve date:** [when]
 **Why the crowd is wrong:** [specific explanation — information lag? bias? missing data?]
 
 ## COVER ALL CATEGORIES
-- Politics & Elections
-- Crypto prices & regulatory decisions  
+- Politics & Elections (run eligibility check first)
+- Crypto prices (run ATH context check first)
 - Geopolitical events (wars, diplomacy, sanctions)
-- Economics (Fed decisions, inflation, GDP)
-- Sports & Entertainment
+- Economics (run Fed proximity check for Fed markets)
+- Sports (run sportsbook cross-reference first)
 - Any others with clear mispricings
 
 ## RISK SECTION
-What to avoid and why. What's too uncertain to bet on even with an apparent edge.
+What to avoid and why. Flag any market where pre-trade checks reveal the trade is invalid (expired, candidate banned, etc).
 
 ## TREND FROM MEMORY
 How have past picks performed? What patterns are you seeing in crowd mispricings?
