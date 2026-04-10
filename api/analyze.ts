@@ -17,7 +17,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           content: `You are a financial news analyst. Analyze news content and return ONLY a JSON object with:
 {
   "title": "Clear headline max 100 chars",
-  "summary": "2-3 sentence summary of key facts and implications",
+  "summary": "4-6 sentence summary. Include: (1) exactly what happened with specific facts, numbers, dates, and named entities (people, companies, countries, locations), (2) which specific outlets/sources are reporting it, (3) what is confirmed vs disputed or unverified, (4) direct market and financial implications with specific sectors or tickers if relevant.",
   "priority": <1-10 number>,
   "categories": ["breaking"|"market"|"geopolitical"|"economy"|"politics"|"technology"|"general"],
   "isMarketRelated": <boolean>

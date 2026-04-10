@@ -11,9 +11,60 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { newsItems, pastAnalyses } = req.body
 
-  const newsDigest = newsItems
-    .slice(0, 50)
-    .map((item: any, i: number) => `${i + 1}. [Priority ${item.priority}/10] [Source: ${item.source}] ${item.title}\n   Summary: ${item.summary}`)
+  const top50 = newsItems.slice(0, 50)
+
+  // --- Clustering pre-pass: group articles by topic so model can count sources properly ---
+  const clusteringCompletion = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [
+      {
+        role: 'system',
+        content: 'You are a news editor. Group news articles that cover the same story or event into clusters. Return ONLY valid JSON.'
+      },
+      {
+        role: 'user',
+        content: `Group these ${top50.length} articles into topic clusters. Articles covering the same event (even from different sources) go in the same cluster.
+
+${top50.map((item: any, i: number) => `${i}: [${item.source}] ${item.title}`).join('\n')}
+
+Return JSON:
+{
+  "clusters": [
+    {
+      "topic": "Short topic label",
+      "articleIndices": [0, 3, 7],
+      "sourceCount": 3,
+      "sources": ["Reuters", "CNBC", "Bloomberg"]
+    }
+  ]
+}`
+      }
+    ],
+    response_format: { type: 'json_object' }
+  })
+
+  let clusters: { topic: string; articleIndices: number[]; sourceCount: number; sources: string[] }[] = []
+  try {
+    const parsed = JSON.parse(clusteringCompletion.choices[0].message.content || '{}')
+    clusters = parsed.clusters || []
+  } catch {}
+
+  // Build cluster index map: article index -> cluster info
+  const articleClusterMap = new Map<number, { topic: string; sourceCount: number; sources: string[] }>()
+  for (const cluster of clusters) {
+    for (const idx of cluster.articleIndices) {
+      articleClusterMap.set(idx, { topic: cluster.topic, sourceCount: cluster.sourceCount, sources: cluster.sources })
+    }
+  }
+
+  const newsDigest = top50
+    .map((item: any, i: number) => {
+      const cluster = articleClusterMap.get(i)
+      const clusterLine = cluster
+        ? `\n   [STORY CLUSTER: "${cluster.topic}" — ${cluster.sourceCount} source(s): ${cluster.sources.join(', ')}]`
+        : ''
+      return `${i + 1}. [Priority ${item.priority}/10] [Source: ${item.source}] ${item.title}\n   Summary: ${item.summary}${clusterLine}`
+    })
     .join('\n\n')
 
   const memoryContext = pastAnalyses && pastAnalyses.length > 0
@@ -35,10 +86,11 @@ ${memoryContext}
 Produce a comprehensive market intelligence report. Before making ANY recommendation, verify claims by cross-referencing sources.
 
 ## SOURCE VERIFICATION
-For each major story, check: Is this reported by multiple sources? If only one outlet is running a story, flag it as unverified. Rate confidence:
-- 🟢 HIGH CONFIDENCE — 3+ independent sources corroborating
-- 🟡 MEDIUM CONFIDENCE — 2 sources, or 1 major outlet
-- 🔴 UNVERIFIED — single source, treat as rumour until confirmed
+Each article includes a [STORY CLUSTER] tag showing how many other sources are independently reporting the same event. Use this to rate confidence — do NOT downgrade confirmed stories just because the individual summary seems thin:
+- 🟢 HIGH CONFIDENCE — cluster shows 3+ independent sources corroborating
+- 🟡 MEDIUM CONFIDENCE — cluster shows 2 sources, or 1 major wire (Bloomberg, Reuters, AP, CNBC)
+- 🔴 UNVERIFIED — cluster shows only 1 source AND it's not a major wire
+IMPORTANT: If the cluster tag shows 5+ sources, treat as confirmed fact even if details in the summary are sparse. The number of sources is the primary confidence signal.
 
 ## MACRO OVERVIEW
 Current market environment. Key themes with confidence ratings. Be specific — what is actually happening right now?
