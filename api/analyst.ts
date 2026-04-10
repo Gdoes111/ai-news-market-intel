@@ -121,8 +121,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const top50 = newsItems.slice(0, 50)
 
-  // --- Step 1: Fetch live market data + cluster articles in parallel ---
-  const [marketSnapshot, clusteringCompletion] = await Promise.all([
+  // --- Step 1: Fetch live market data + pre-clustering magnitude scan in parallel ---
+  // Magnitude scan runs on ALL articles individually BEFORE clustering — catches single-mention big stories
+  const [marketSnapshot, clusteringCompletion, preMagnitudeCompletion] = await Promise.all([
     fetchMarketSnapshot(),
     openai.chat.completions.create({
       model: 'gpt-5.4-mini',
@@ -153,6 +154,36 @@ Return JSON:
         }
       ],
       response_format: { type: 'json_object' }
+    }),
+    // PRE-CLUSTERING magnitude scan — reads every article individually before any ranking/clustering
+    // This is the key fix: catches single-mention globally-significant stories before they get buried
+    openai.chat.completions.create({
+      model: 'gpt-5.4-mini',
+      messages: [
+        { role: 'system', content: 'You are a senior intelligence analyst. Return ONLY valid JSON.' },
+        {
+          role: 'user',
+          content: `Read every headline below individually. Flag any article that describes an event which — if confirmed — would:
+- Move a major commodity (oil, gold) by more than 5%
+- Represent a leadership change or death of a significant national leader
+- Constitute a major infrastructure attack (pipeline, power grid, port, data center)
+- Be a central bank emergency action (unscheduled rate move, QE activation, currency intervention)
+- Represent major war escalation or ceasefire collapse
+- Be a sanctions package affecting >$100B in trade
+
+Flag it even if only ONE article mentions it. That is the entire point of this scan.
+
+${top50.map((item: any, i: number) => `${i}: [${item.source}] ${item.title}`).join('\n')}
+
+Return JSON:
+{
+  "magnitudeStories": [
+    { "index": 0, "topic": "Short label e.g. Saudi pipeline attack", "searchQuery": "3-5 word Google News search e.g. Saudi Aramco pipeline attack" }
+  ]
+}`
+        }
+      ],
+      response_format: { type: 'json_object' }
     })
   ])
 
@@ -162,32 +193,8 @@ Return JSON:
     clusters = parsed.clusters || []
   } catch {}
 
-  // --- Step 2: Identify magnitude-gate stories (globally significant regardless of cluster rank) ---
-  // Ask mini to flag any story that would be a top-5 global macro event if true
-  const magnitudeCompletion = await openai.chat.completions.create({
-    model: 'gpt-5.4-mini',
-    messages: [
-      { role: 'system', content: 'You are a news editor. Return ONLY valid JSON.' },
-      {
-        role: 'user',
-        content: `From this list of news headlines, identify any stories that — if confirmed — would be a top-5 global macro or geopolitical event (e.g. world leader death, major oil infrastructure attack, central bank emergency action, war escalation, major sanctions).
-
-${top50.map((item: any, i: number) => `${i}: [${item.source}] ${item.title}`).join('\n')}
-
-Return JSON:
-{
-  "magnitudeStories": [
-    { "index": 0, "topic": "Short label", "searchQuery": "3-5 word Google News search" }
-  ]
-}`
-      }
-    ],
-    response_format: { type: 'json_object' }
-  })
-
-  let magnitudeStories: { index: number; topic: string; searchQuery: string }[] = []
   try {
-    const parsed = JSON.parse(magnitudeCompletion.choices[0].message.content || '{}')
+    const parsed = JSON.parse(preMagnitudeCompletion.choices[0].message.content || '{}')
     magnitudeStories = parsed.magnitudeStories || []
   } catch {}
 

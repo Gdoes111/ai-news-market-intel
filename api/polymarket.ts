@@ -171,20 +171,29 @@ Return JSON:
       response_format: { type: 'json_object' }
     }),
 
+    // PRE-CLUSTERING magnitude scan — reads every article individually before any ranking
     openai.chat.completions.create({
       model: 'gpt-5.4-mini',
       messages: [
-        { role: 'system', content: 'You are a news editor. Return ONLY valid JSON.' },
+        { role: 'system', content: 'You are a senior intelligence analyst. Return ONLY valid JSON.' },
         {
           role: 'user',
-          content: `From these headlines, identify stories that — if confirmed — would be a top-5 global macro or geopolitical event (world leader death, major attack, war escalation, central bank emergency action, etc).
+          content: `Read every headline below individually. Flag any article that describes an event which — if confirmed — would:
+- Move a major commodity (oil, gold, crypto) by more than 5%
+- Represent a leadership change or death of a significant national leader
+- Constitute a major infrastructure attack (pipeline, power grid, port)
+- Be a central bank emergency action (unscheduled rate move, QE, currency intervention)
+- Represent major war escalation or ceasefire collapse
+- Be a sanctions package affecting >$100B in trade
+
+Flag it even if only ONE article mentions it. That is the entire point of this scan.
 
 ${top50.map((item: any, i: number) => `${i}: [${item.source}] ${item.title}`).join('\n')}
 
 Return JSON:
 {
   "magnitudeStories": [
-    { "index": 0, "topic": "Short label", "searchQuery": "3-5 word Google News search" }
+    { "index": 0, "topic": "Short label e.g. Saudi pipeline attack", "searchQuery": "3-5 word Google News search" }
   ]
 }`
         }
