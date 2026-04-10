@@ -53,7 +53,7 @@ function App() {
         return
       }
 
-      const newsItems = await fetchAndConvertFeeds(enabledFeeds, 30)
+      const newsItems = await fetchAndConvertFeeds(enabledFeeds, 500)
       const uniqueNews = deduplicateNews(news || [], newsItems)
       
       if (uniqueNews.length > 0) {

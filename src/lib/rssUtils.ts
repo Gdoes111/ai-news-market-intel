@@ -465,7 +465,7 @@ async function parseRSSFeed(feedUrl: string, sourceName: string): Promise<RSSIte
     if (!response.ok) throw new Error('Failed to fetch RSS feed')
     const data = await response.json()
     if (data.status !== 'ok') throw new Error(data.message || 'RSS parsing failed')
-    return data.items.slice(0, 10).map((item: any) => ({
+    return data.items.slice(0, 20).map((item: any) => ({
       title: item.title || 'Untitled',
       description: item.description || item.content || '',
       link: item.link || '',
@@ -543,7 +543,7 @@ export async function convertRSSItemToNews(rssItem: RSSItem): Promise<NewsItem> 
   }
 }
 
-export async function fetchAndConvertFeeds(feeds: RSSFeed[], limit: number = 20): Promise<NewsItem[]> {
+export async function fetchAndConvertFeeds(feeds: RSSFeed[], limit: number = 500): Promise<NewsItem[]> {
   const rssItems = await fetchMultipleFeeds(feeds)
   const limitedItems = rssItems.slice(0, limit)
   

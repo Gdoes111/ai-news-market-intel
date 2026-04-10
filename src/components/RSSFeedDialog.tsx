@@ -49,7 +49,7 @@ export function RSSFeedDialog({ open, onOpenChange, onNewsAdded, existingNews }:
         return
       }
 
-      const newsItems = await fetchAndConvertFeeds(enabledFeeds, 30)
+      const newsItems = await fetchAndConvertFeeds(enabledFeeds, 500)
       
       const uniqueNews = deduplicateNews(existingNews, newsItems)
       
