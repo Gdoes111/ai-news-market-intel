@@ -32,18 +32,240 @@ async function fetchPolymarketEvents(): Promise<PolymarketEvent[]> {
   }
 }
 
+// Search Google News RSS for a topic
+async function searchGoogleNews(query: string): Promise<{ title: string; source: string }[]> {
+  try {
+    const encoded = encodeURIComponent(query)
+    const url = `https://news.google.com/rss/search?q=${encoded}&hl=en-US&gl=US&ceid=US:en`
+    const resp = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/rss+xml' }
+    })
+    if (!resp.ok) return []
+    const xml = await resp.text()
+    const results: { title: string; source: string }[] = []
+    const itemRegex = /<item>([\s\S]*?)<\/item>/g
+    let match
+    while ((match = itemRegex.exec(xml)) !== null && results.length < 6) {
+      const item = match[1]
+      const titleMatch = item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) || item.match(/<title>(.*?)<\/title>/)
+      const sourceMatch = item.match(/<source[^>]*>(.*?)<\/source>/)
+      if (titleMatch) {
+        const rawTitle = titleMatch[1]
+        const sourceName = sourceMatch?.[1] || rawTitle.split(' - ').pop() || 'Unknown'
+        const cleanTitle = rawTitle.includes(' - ') ? rawTitle.split(' - ').slice(0, -1).join(' - ') : rawTitle
+        results.push({ title: cleanTitle.trim(), source: sourceName.trim() })
+      }
+    }
+    return results
+  } catch {
+    return []
+  }
+}
+
+// Fetch a single price from stooq.com
+async function fetchStooq(symbol: string, label: string): Promise<string | null> {
+  try {
+    const url = `https://stooq.com/q/l/?s=${encodeURIComponent(symbol)}&f=sd2t2ohlcv&h&e=csv`
+    const resp = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } })
+    if (!resp.ok) return null
+    const text = await resp.text()
+    const lines = text.trim().split('\n')
+    if (lines.length < 2) return null
+    const cols = lines[1].split(',')
+    const close = parseFloat(cols[6])
+    if (isNaN(close)) return null
+    const open = parseFloat(cols[3])
+    const chg = isNaN(open) || open === 0 ? 0 : ((close - open) / open) * 100
+    const arrow = chg >= 0 ? '▲' : '▼'
+    return `${label}: $${close.toFixed(2)} (${arrow}${Math.abs(chg).toFixed(2)}%)`
+  } catch {
+    return null
+  }
+}
+
+async function fetchMarketSnapshot(): Promise<string> {
+  const stooqSymbols: [string, string][] = [
+    ['spy.us',   'S&P 500 (SPY)'],
+    ['qqq.us',   'Nasdaq 100 (QQQ)'],
+    ['cl.f',     'WTI Crude Oil'],
+    ['lco.f',    'Brent Crude'],
+    ['gc.f',     'Gold'],
+    ['^vix',     'VIX (Fear Index)'],
+    ['btcusd',   'Bitcoin (BTC/USD)'],
+  ]
+  const results = await Promise.all(stooqSymbols.map(([sym, label]) => fetchStooq(sym, label)))
+  const lines = results.filter(Boolean) as string[]
+
+  if (lines.length >= 3) return lines.join('\n')
+
+  // Yahoo chart fallback
+  try {
+    const ua = 'Mozilla/5.0'
+    const ySymbols = ['SPY', 'CL=F', 'BZ=F', 'GC=F', '^VIX', 'BTC-USD']
+    const yLabels: Record<string, string> = {
+      'SPY': 'S&P 500', 'CL=F': 'WTI Crude', 'BZ=F': 'Brent Crude',
+      'GC=F': 'Gold', '^VIX': 'VIX', 'BTC-USD': 'Bitcoin'
+    }
+    const yLines: string[] = []
+    await Promise.all(ySymbols.map(async sym => {
+      try {
+        const r = await fetch(`https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=2d`, {
+          headers: { 'User-Agent': ua, 'Accept': 'application/json' }
+        })
+        if (!r.ok) return
+        const d = await r.json()
+        const meta = d?.chart?.result?.[0]?.meta
+        if (!meta) return
+        const price = meta.regularMarketPrice
+        const prev = meta.chartPreviousClose || meta.previousClose
+        const chg = prev ? ((price - prev) / prev) * 100 : 0
+        const arrow = chg >= 0 ? '▲' : '▼'
+        yLines.push(`${yLabels[sym]}: $${price?.toFixed(2)} (${arrow}${Math.abs(chg).toFixed(2)}%)`)
+      } catch {}
+    }))
+    if (yLines.length >= 3) return (lines.length > 0 ? lines.join('\n') + '\n' : '') + yLines.join('\n')
+  } catch {}
+
+  return lines.length > 0 ? lines.join('\n') : 'Live market data unavailable.'
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
 
   const { newsItems, pastAnalyses } = req.body
+  const top50 = newsItems.slice(0, 50)
 
-  let polymarketEvents: PolymarketEvent[] = []
-  try {
-    polymarketEvents = await fetchPolymarketEvents()
-  } catch (error) {
-    console.error('Polymarket fetch failed:', error)
+  // --- Step 1: Fetch Polymarket events + live market data in parallel ---
+  const [polymarketEvents, marketSnapshot] = await Promise.all([
+    fetchPolymarketEvents(),
+    fetchMarketSnapshot()
+  ])
+
+  // --- Step 2: Cluster articles + identify magnitude-gate stories + gap analysis in parallel ---
+  const [clusteringCompletion, magnitudeCompletion, gapCompletion] = await Promise.all([
+    openai.chat.completions.create({
+      model: 'gpt-5.4-mini',
+      messages: [
+        { role: 'system', content: 'You are a news editor. Group news articles into topic clusters. Return ONLY valid JSON.' },
+        {
+          role: 'user',
+          content: `Group these ${top50.length} articles into topic clusters. Articles covering the same event go in the same cluster. Score each cluster 1-10 for Polymarket relevance (how likely is there a market for this?).
+
+${top50.map((item: any, i: number) => `${i}: [${item.source}] ${item.title}`).join('\n')}
+
+Return JSON:
+{
+  "clusters": [
+    {
+      "topic": "Short topic label",
+      "searchQuery": "3-5 word Google News search query",
+      "articleIndices": [0, 3, 7],
+      "sourceCount": 3,
+      "sources": ["Reuters", "CNBC", "Bloomberg"],
+      "polymarketRelevance": 8
+    }
+  ]
+}`
+        }
+      ],
+      response_format: { type: 'json_object' }
+    }),
+
+    openai.chat.completions.create({
+      model: 'gpt-5.4-mini',
+      messages: [
+        { role: 'system', content: 'You are a news editor. Return ONLY valid JSON.' },
+        {
+          role: 'user',
+          content: `From these headlines, identify stories that — if confirmed — would be a top-5 global macro or geopolitical event (world leader death, major attack, war escalation, central bank emergency action, etc).
+
+${top50.map((item: any, i: number) => `${i}: [${item.source}] ${item.title}`).join('\n')}
+
+Return JSON:
+{
+  "magnitudeStories": [
+    { "index": 0, "topic": "Short label", "searchQuery": "3-5 word Google News search" }
+  ]
+}`
+        }
+      ],
+      response_format: { type: 'json_object' }
+    }),
+
+    openai.chat.completions.create({
+      model: 'gpt-5.4-mini',
+      messages: [
+        { role: 'system', content: 'You are a Polymarket trader and news editor. Return ONLY valid JSON.' },
+        {
+          role: 'user',
+          content: `You are looking at a digest of ${top50.length} news articles. Here are the topics covered:
+
+${top50.slice(0, 20).map((item: any) => `- ${item.title}`).join('\n')}
+
+Given these topics, what major related stories are MISSING that would affect Polymarket odds? Think: what follow-on events would be happening? What policy responses? What neighbouring markets/countries are affected but not mentioned? What Polymarket-relevant developments (elections, Fed moves, crypto regulation, sports outcomes) might be underrepresented?
+
+Only flag genuinely important gaps. Max 4.
+
+Return JSON:
+{
+  "gaps": [
+    { "topic": "Short label", "searchQuery": "3-5 word Google News search", "reason": "Why this matters for Polymarket" }
+  ]
+}`
+        }
+      ],
+      response_format: { type: 'json_object' }
+    })
+  ])
+
+  let clusters: { topic: string; searchQuery: string; articleIndices: number[]; sourceCount: number; sources: string[]; polymarketRelevance: number }[] = []
+  let magnitudeStories: { index: number; topic: string; searchQuery: string }[] = []
+  let gaps: { topic: string; searchQuery: string; reason: string }[] = []
+
+  try { clusters = JSON.parse(clusteringCompletion.choices[0].message.content || '{}').clusters || [] } catch {}
+  try { magnitudeStories = JSON.parse(magnitudeCompletion.choices[0].message.content || '{}').magnitudeStories || [] } catch {}
+  try { gaps = JSON.parse(gapCompletion.choices[0].message.content || '{}').gaps || [] } catch {}
+
+  // --- Step 3: Fire all Google News searches in parallel ---
+  const topClusters = [...clusters].sort((a, b) => (b.polymarketRelevance || 0) - (a.polymarketRelevance || 0)).slice(0, 8)
+  const coveredTopics = topClusters.map(c => c.topic.toLowerCase())
+
+  const allSearches: { topic: string; searchQuery: string; tag: 'cluster' | 'magnitude' | 'gap' }[] = [
+    ...topClusters.map(c => ({ topic: c.topic, searchQuery: c.searchQuery || c.topic, tag: 'cluster' as const })),
+    ...magnitudeStories
+      .filter(m => !coveredTopics.some(t => t.includes(m.topic.toLowerCase())))
+      .map(m => ({ topic: m.topic, searchQuery: m.searchQuery, tag: 'magnitude' as const })),
+    ...gaps
+      .filter(g => !coveredTopics.some(t => t.includes(g.topic.toLowerCase())))
+      .map(g => ({ topic: g.topic, searchQuery: g.searchQuery, tag: 'gap' as const }))
+  ]
+
+  const researchResults = await Promise.all(
+    allSearches.map(async (s) => {
+      const hits = await searchGoogleNews(s.searchQuery)
+      return { topic: s.topic, hits, tag: s.tag }
+    })
+  )
+
+  const externalVerification = researchResults
+    .filter(r => r.hits.length > 0)
+    .map(r => {
+      const sourceList = [...new Set(r.hits.map(h => h.source))].join(', ')
+      const headlines = r.hits.slice(0, 3).map(h => `  • "${h.title}" — ${h.source}`).join('\n')
+      const tag = r.tag === 'magnitude' ? ' ⚠️ MAGNITUDE-GATE' : r.tag === 'gap' ? ' 🔍 GAP SEARCH (not in digest)' : ''
+      return `**${r.topic}**${tag} (${r.hits.length} results from: ${sourceList})\n${headlines}`
+    })
+    .join('\n\n')
+
+  // Build cluster map for digest
+  const articleClusterMap = new Map<number, { topic: string; sourceCount: number; sources: string[] }>()
+  for (const cluster of clusters) {
+    for (const idx of cluster.articleIndices) {
+      articleClusterMap.set(idx, { topic: cluster.topic, sourceCount: cluster.sourceCount, sources: cluster.sources })
+    }
   }
 
+  // Build digests
   const marketsDigest = polymarketEvents.slice(0, 30).map((event, i) => {
     const marketLines = event.markets?.slice(0, 3).map(market => {
       let prices = 'N/A'
@@ -57,9 +279,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return `${i + 1}. ${event.title}\n${marketLines}`
   }).join('\n\n')
 
-  const newsDigest = newsItems
-    .slice(0, 40)
-    .map((item: any, i: number) => `${i + 1}. [${item.source}] [Priority ${item.priority}/10] ${item.title}\n   ${item.summary}`)
+  const newsDigest = top50
+    .map((item: any, i: number) => {
+      const cluster = articleClusterMap.get(i)
+      const clusterLine = cluster
+        ? `\n   [STORY CLUSTER: "${cluster.topic}" — ${cluster.sourceCount} source(s) in digest: ${cluster.sources.join(', ')}]`
+        : ''
+      return `${i + 1}. [Priority ${item.priority}/10] [Source: ${item.source}] ${item.title}\n   Summary: ${item.summary}${clusterLine}`
+    })
     .join('\n\n')
 
   const memoryContext = pastAnalyses && pastAnalyses.length > 0
@@ -69,59 +296,69 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .join('\n\n')
     : 'No previous Polymarket analyses yet.'
 
-  const systemPrompt = `You are a sharp Polymarket trader and investigative analyst. You find mispricings by reading more sources than the average trader. You think probabilistically, verify claims before betting on them, and track your edge over time.
+  const systemPrompt = `You are a sharp Polymarket trader and probabilistic analyst. Your job is to find markets where the crowd odds are wrong — not to have a predetermined bias, but to follow the evidence wherever it leads. You think in probabilities, verify claims before sizing up, and track your edge over time.`
 
-Your job: find markets where the crowd odds are WRONG based on news evidence.`
+  const userPrompt = `## LIVE MARKET SNAPSHOT (fetched now)
+${marketSnapshot}
 
-  const userPrompt = `## LIVE POLYMARKET MARKETS
+## LIVE POLYMARKET MARKETS (top 30 by volume)
 ${marketsDigest || 'Could not fetch live markets — analyse based on news context only.'}
 
-## CURRENT NEWS (${newsItems.length} articles)
+## EXTERNAL VERIFICATION (live Google News searches, run just now)
+${externalVerification || 'External search unavailable — use digest sources only.'}
+
+## CURRENT NEWS DIGEST (${newsItems.length} articles)
 ${newsDigest}
 
 ## PAST ANALYSIS MEMORY
 ${memoryContext}
 
 ## YOUR TASK
-Find Polymarket mispricings. For each opportunity:
+Find Polymarket mispricings where the crowd odds are wrong based on verified evidence. For each market, assess what the probability SHOULD be vs what the crowd is pricing, and explain why the gap exists.
 
-1. **VERIFY THE NEWS FIRST** — before recommending any trade, cross-check:
-   - 🟢 HIGH CONFIDENCE: 3+ sources confirm → strong trade signal
-   - 🟡 MEDIUM CONFIDENCE: 1-2 sources → trade with smaller size
-   - 🔴 UNVERIFIED: single source or rumour → flag as speculative, don't recommend unless edge is huge
+## SOURCE VERIFICATION RULES
+Rate confidence using this hierarchy:
 
-2. **FIND THE MISPRICINGS** — where are crowd odds clearly wrong?
-   - What does the news say the probability SHOULD be?
-   - What are the current odds?
-   - Why is the crowd wrong? (Information lag? Bias? Echo chamber?)
+**1. External verification (highest weight)**
+- Google News returned 4+ results → 🟢 HIGH CONFIDENCE
+- Google News returned 2-3 results → 🟡 MEDIUM CONFIDENCE
+- 0-1 results or not searched → fall back to digest
 
-3. **FORMAT EACH OPPORTUNITY AS:**
+**2. Digest cluster count (fallback)**
+- 3+ sources in cluster → 🟢 HIGH
+- 2 sources → 🟡 MEDIUM
+- 1 major wire (Bloomberg/Reuters/AP/WSJ/FT) → 🟡 MEDIUM
+- 1 smaller outlet → 🔴 UNVERIFIED
 
-### [MARKET TITLE]
+**Gap searches** (🔍 GAP SEARCH) found stories not in the digest. Include these if they affect any Polymarket odds.
+**Magnitude-gate stories** (⚠️ MAGNITUDE-GATE) are globally significant — if confirmed, treat as 🟢 HIGH.
+
+## FORMAT EACH OPPORTUNITY AS:
+
+### [EXACT MARKET TITLE]
 **Current odds:** Yes X% / No Y%
 **What it should be:** ~Z% based on [evidence]
-**Edge:** [how many percentage points mispriced]
-**Confidence:** 🟢/🟡/🔴 [reasoning]
+**Edge:** [percentage points mispriced]
+**Confidence:** 🟢/🟡/🔴 [reasoning — cite specific sources from verification above]
 **Suggested position:** YES or NO, [small/medium/large] size
-**Sources supporting:** [which outlets are reporting this]
-**Resolve date:** [when does it close]
-**Why the crowd is wrong:** [explanation]
+**Resolve date:** [when]
+**Why the crowd is wrong:** [specific explanation — information lag? bias? missing data?]
 
-## COVER THESE CATEGORIES
+## COVER ALL CATEGORIES
 - Politics & Elections
-- Crypto prices & regulatory decisions
+- Crypto prices & regulatory decisions  
 - Geopolitical events (wars, diplomacy, sanctions)
-- Sports & Entertainment (Oscar winners, sports championships — useful for volume)
-- Economics (Fed decisions, inflation data, GDP)
-- Celebrity/Pop culture if relevant (TMZ-type early signals)
+- Economics (Fed decisions, inflation, GDP)
+- Sports & Entertainment
+- Any others with clear mispricings
 
 ## RISK SECTION
-What trades to AVOID and why. What information is too uncertain to bet on.
+What to avoid and why. What's too uncertain to bet on even with an apparent edge.
 
 ## TREND FROM MEMORY
-If past picks are tracked, how have previous calls performed? What patterns in crowd mispricing are you seeing?
+How have past picks performed? What patterns are you seeing in crowd mispricings?
 
-Be specific with percentages. Name the exact markets. This is real money on the line.`
+Be specific with percentages. Name exact markets. This is real money.`
 
   try {
     const completion = await openai.chat.completions.create({
@@ -130,7 +367,7 @@ Be specific with percentages. Name the exact markets. This is real money on the 
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
-      max_completion_tokens: 4000
+      max_completion_tokens: 5000
     })
 
     const report = completion.choices[0].message.content || 'Analysis failed'
@@ -154,7 +391,7 @@ Return this JSON:
       "targetOdds": "65%",
       "confidence": "high" or "medium" or "speculative",
       "size": "small" or "medium" or "large",
-      "reasoning": "1-2 sentence summary of why the crowd is wrong and what the news evidence says"
+      "reasoning": "1-2 sentence summary of why the crowd is wrong and what the evidence says"
     }
   ],
   "marketsAnalysed": 0,
