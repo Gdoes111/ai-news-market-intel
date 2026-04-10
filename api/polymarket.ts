@@ -153,7 +153,8 @@ Return this JSON:
       "currentOdds": "35%",
       "targetOdds": "65%",
       "confidence": "high" or "medium" or "speculative",
-      "size": "small" or "medium" or "large"
+      "size": "small" or "medium" or "large",
+      "reasoning": "1-2 sentence summary of why the crowd is wrong and what the news evidence says"
     }
   ],
   "marketsAnalysed": 0,

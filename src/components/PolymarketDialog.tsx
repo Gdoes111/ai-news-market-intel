@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { ChartLine, ArrowsClockwise, Clock, Trophy } from '@phosphor-icons/react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { ChartLine, ArrowsClockwise, Clock, Trophy, Info } from '@phosphor-icons/react'
 import { NewsItem } from '@/lib/types'
 import { useLocalStorage } from '@/hooks/use-local-storage'
 import { toast } from 'sonner'
@@ -16,6 +17,7 @@ interface PolymarketPick {
   targetOdds: string
   confidence: 'high' | 'medium' | 'speculative'
   size: 'small' | 'medium' | 'large'
+  reasoning?: string
 }
 
 interface PolymarketResult {
@@ -164,34 +166,53 @@ export function PolymarketDialog({ open, onOpenChange, newsItems }: PolymarketDi
                   {latestAnalysis.topPicks && latestAnalysis.topPicks.length > 0 && (
                     <div className="space-y-2">
                       <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Top Trade Picks</div>
-                      {latestAnalysis.topPicks.map((pick, i) => (
-                        <div key={i} className="p-3 bg-card rounded-lg border border-border hover:border-green-500/30 transition-colors">
-                          <div className="flex items-start justify-between gap-3 mb-2">
-                            <p className="text-sm font-medium text-foreground flex-1">{pick.market}</p>
-                            <Badge className={`shrink-0 text-xs font-bold ${pick.recommendation === 'YES' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
-                              {pick.recommendation}
-                            </Badge>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            <span className="text-xs text-muted-foreground font-mono">Current: {pick.currentOdds}</span>
-                            <span className="text-xs text-accent font-mono">→ Target: {pick.targetOdds}</span>
-                            <Badge variant="outline" className={`text-xs ${getConfidenceColor(pick.confidence)}`}>
-                              {pick.confidence}
-                            </Badge>
-                            <Badge variant="outline" className={`text-xs ${getSizeColor(pick.size)}`}>
-                              {pick.size} size
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
+                      <TooltipProvider delayDuration={200}>
+                        {latestAnalysis.topPicks.map((pick, i) => (
+                          <Tooltip key={i}>
+                            <TooltipTrigger asChild>
+                              <div className="p-3 bg-card rounded-lg border border-border hover:border-green-500/30 transition-colors cursor-default">
+                                <div className="flex items-start justify-between gap-3 mb-2">
+                                  <p className="text-sm font-medium text-foreground flex-1">{pick.market}</p>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    {pick.reasoning && (
+                                      <Info size={14} className="text-muted-foreground" />
+                                    )}
+                                    <Badge className={`text-xs font-bold ${pick.recommendation === 'YES' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+                                      {pick.recommendation}
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  <span className="text-xs text-muted-foreground font-mono">Current: {pick.currentOdds}</span>
+                                  <span className="text-xs text-accent font-mono">→ Target: {pick.targetOdds}</span>
+                                  <Badge variant="outline" className={`text-xs ${getConfidenceColor(pick.confidence)}`}>
+                                    {pick.confidence}
+                                  </Badge>
+                                  <Badge variant="outline" className={`text-xs ${getSizeColor(pick.size)}`}>
+                                    {pick.size} size
+                                  </Badge>
+                                </div>
+                              </div>
+                            </TooltipTrigger>
+                            {pick.reasoning && (
+                              <TooltipContent side="bottom" className="max-w-sm text-xs leading-relaxed p-3 bg-popover border border-border text-popover-foreground shadow-xl">
+                                <p className="font-semibold text-green-400 mb-1">Why this trade?</p>
+                                <p>{pick.reasoning}</p>
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        ))}
+                      </TooltipProvider>
                     </div>
                   )}
 
                   {/* Full report */}
-                  <div
-                    className="prose prose-invert prose-sm max-w-none text-foreground [&_h2]:text-green-400 [&_h3]:text-foreground [&_strong]:text-accent-foreground [&_ul]:space-y-1"
-                    dangerouslySetInnerHTML={{ __html: marked(latestAnalysis.report) as string }}
-                  />
+                  <div className="border border-border rounded-lg p-4 bg-slate-900 w-full overflow-hidden">
+                    <div
+                      className="prose prose-invert prose-sm max-w-none w-full break-words [&_h2]:text-green-400 [&_h3]:text-foreground [&_strong]:text-accent-foreground [&_ul]:space-y-1"
+                      dangerouslySetInnerHTML={{ __html: marked(latestAnalysis.report) as string }}
+                    />
+                  </div>
                 </div>
               )}
             </>
